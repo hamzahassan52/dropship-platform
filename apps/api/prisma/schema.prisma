@@ -1,0 +1,187 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  apiKey       String         @unique @default(cuid())
+  plan         UserPlan       @default(FREE)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  name         String?
+  avatar       String?
+  isVerified   Boolean        @default(false)
+  lastLoginAt  DateTime?
+  password     String
+  firstName    String         @default("")
+  lastName     String         @default("")
+  chatMessages ChatMessage[]
+  orders       Order[]
+  products     StoreProduct[]
+  stores       Store[]
+
+  @@map("users")
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  role      String
+  content   String
+  toolCalls Json?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
+
+model Store {
+  id          String         @id @default(cuid())
+  userId      String
+  name        String
+  platform    StorePlatform
+  storeUrl    String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  credentials Json
+  isActive    Boolean        @default(true)
+  lastSyncAt  DateTime?
+  settings    Json?
+  orders      Order[]
+  products    StoreProduct[]
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("stores")
+}
+
+model StoreProduct {
+  id             String   @id @default(cuid())
+  userId         String
+  storeId        String
+  productId      String
+  externalId     String?
+  customTitle    String?
+  sellingPrice   Float
+  compareAtPrice Float?
+  isActive       Boolean  @default(true)
+  autoSync       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, productId])
+  @@map("store_products")
+}
+
+model Product {
+  id            String         @id @default(cuid())
+  externalId    String         @unique
+  source        String         @default("CJ_DROPSHIPPING")
+  title         String
+  description   String?
+  images        String[]
+  supplierPrice Float
+  shippingCost  Float          @default(0)
+  category      String?
+  supplierId    String?
+  rating        Float?
+  orderCount    Int            @default(0)
+  lastSynced    DateTime       @default(now())
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  orderItems    OrderItem[]
+  storeProducts StoreProduct[]
+
+  @@map("products")
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  userId          String
+  storeId         String
+  customerEmail   String
+  shippingAddress Json
+  subtotal        Float
+  shippingCost    Float
+  total           Float
+  profit          Float
+  status          OrderStatus @default(PENDING)
+  supplierOrderId String?
+  trackingNumber  String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  carrier         String?
+  customerName    String?
+  externalOrderId String?
+  notes           String?
+  items           OrderItem[]
+  store           Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, externalOrderId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                String   @id @default(cuid())
+  orderId           String
+  productId         String?
+  productTitle      String
+  quantity          Int
+  unitPrice         Float
+  supplierPrice     Float
+  supplierProductId String
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product           Product? @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model Supplier {
+  id           String   @id @default(cuid())
+  externalId   String   @unique
+  source       String   @default("CJ_DROPSHIPPING")
+  name         String
+  rating       Float?
+  responseRate Float?
+  shipOnTime   Float?
+  disputeRate  Float?
+  trustScore   Float?
+  lastScored   DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("suppliers")
+}
+
+enum UserPlan {
+  FREE
+  PRO
+  AGENCY
+  ENTERPRISE
+}
+
+enum StorePlatform {
+  SHOPIFY
+  WOOCOMMERCE
+  EBAY
+  CUSTOM
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
