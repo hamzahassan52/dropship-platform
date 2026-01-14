@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "build": "nest build",
-    "dev": "ts-node-dev --respawn --transpile-only src/main.ts",
+    "dev": "ts-node-dev --respawn --transpile-only --watch src src/main.ts",
     "start": "nest start",
     "start:prod": "node dist/main",
+    "start:dev": "nest start --watch",
     "test": "jest",
     "lint": "eslint \"{src,test}/**/*.ts\""
   },
@@ -26,6 +27,7 @@
     "class-validator": "^0.14.0",
     "groq-sdk": "^0.5.0",
     "nodemailer": "^7.0.12",
+    "ollama": "^0.6.3",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.0",

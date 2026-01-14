@@ -19,7 +19,8 @@ export default withAuth(
           req.nextUrl.pathname.startsWith('/login') ||
           req.nextUrl.pathname.startsWith('/signup') ||
           req.nextUrl.pathname.startsWith('/forgot-password') ||
-          req.nextUrl.pathname.startsWith('/api/auth')
+          req.nextUrl.pathname.startsWith('/api/auth') ||
+          req.nextUrl.pathname.startsWith('/api/chat')
         ) {
           return true;
         }

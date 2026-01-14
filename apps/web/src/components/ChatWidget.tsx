@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, X, Loader2, Trash2 } from 'lucide-react';
+import { Loader2, MessageSquare, Send, Trash2, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 interface Message {
   id: string;
@@ -33,12 +33,7 @@ export function ChatWidget() {
 
   const loadHistory = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const res = await fetch('/backend/chat/history', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch('/api/chat/history');
       if (res.ok) {
         const data = await res.json();
         setMessages(data);
@@ -55,22 +50,20 @@ export function ChatWidget() {
       id: Date.now().toString(),
       role: 'user',
       content: input,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date().toISOString()
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/backend/chat', {
+      const res = await fetch('/api/chat', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ message: input }),
+        body: JSON.stringify({ message: input })
       });
 
       if (res.ok) {
@@ -79,22 +72,22 @@ export function ChatWidget() {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
           content: data.reply,
-          createdAt: new Date().toISOString(),
+          createdAt: new Date().toISOString()
         };
-        setMessages(prev => [...prev, assistantMessage]);
+        setMessages((prev) => [...prev, assistantMessage]);
       } else {
         throw new Error('Failed to send message');
       }
     } catch (error) {
       console.error('Chat error:', error);
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
         {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
           content: 'Sorry, something went wrong. Please try again.',
-          createdAt: new Date().toISOString(),
-        },
+          createdAt: new Date().toISOString()
+        }
       ]);
     } finally {
       setLoading(false);
@@ -103,10 +96,8 @@ export function ChatWidget() {
 
   const clearHistory = async () => {
     try {
-      const token = localStorage.getItem('token');
-      await fetch('/backend/chat/history', {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+      await fetch('/api/chat/history', {
+        method: 'DELETE'
       });
       setMessages([]);
     } catch (error) {
@@ -142,7 +133,7 @@ export function ChatWidget() {
           boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)',
           cursor: 'pointer',
           border: 'none',
-          zIndex: 1000,
+          zIndex: 1000
         }}
       >
         <MessageSquare size={24} />
@@ -163,7 +154,7 @@ export function ChatWidget() {
             display: 'flex',
             flexDirection: 'column',
             zIndex: 1000,
-            overflow: 'hidden',
+            overflow: 'hidden'
           }}
         >
           {/* Header */}
@@ -174,7 +165,7 @@ export function ChatWidget() {
               padding: '1rem',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center',
+              alignItems: 'center'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -184,14 +175,22 @@ export function ChatWidget() {
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button
                 onClick={clearHistory}
-                style={{ background: 'rgba(255,255,255,0.2)', borderRadius: '0.25rem', padding: '0.25rem' }}
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  borderRadius: '0.25rem',
+                  padding: '0.25rem'
+                }}
                 title="Clear history"
               >
                 <Trash2 size={16} />
               </button>
               <button
                 onClick={() => setIsOpen(false)}
-                style={{ background: 'rgba(255,255,255,0.2)', borderRadius: '0.25rem', padding: '0.25rem' }}
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  borderRadius: '0.25rem',
+                  padding: '0.25rem'
+                }}
               >
                 <X size={16} />
               </button>
@@ -206,7 +205,7 @@ export function ChatWidget() {
               padding: '1rem',
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.75rem',
+              gap: '0.75rem'
             }}
           >
             {messages.length === 0 && (
@@ -224,7 +223,7 @@ export function ChatWidget() {
                 key={msg.id}
                 style={{
                   display: 'flex',
-                  justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                  justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start'
                 }}
               >
                 <div
@@ -232,10 +231,13 @@ export function ChatWidget() {
                     maxWidth: '80%',
                     padding: '0.75rem 1rem',
                     borderRadius: msg.role === 'user' ? '1rem 1rem 0 1rem' : '1rem 1rem 1rem 0',
-                    background: msg.role === 'user' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f3f4f6',
+                    background:
+                      msg.role === 'user'
+                        ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                        : '#f3f4f6',
                     color: msg.role === 'user' ? 'white' : '#1f2937',
                     fontSize: '0.875rem',
-                    whiteSpace: 'pre-wrap',
+                    whiteSpace: 'pre-wrap'
                   }}
                 >
                   {msg.content}
@@ -252,10 +254,14 @@ export function ChatWidget() {
                     background: '#f3f4f6',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.5rem',
+                    gap: '0.5rem'
                   }}
                 >
-                  <Loader2 size={16} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} />
+                  <Loader2
+                    size={16}
+                    className="animate-spin"
+                    style={{ animation: 'spin 1s linear infinite' }}
+                  />
                   <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Thinking...</span>
                 </div>
               </div>
@@ -270,7 +276,7 @@ export function ChatWidget() {
               padding: '1rem',
               borderTop: '1px solid #e5e7eb',
               display: 'flex',
-              gap: '0.5rem',
+              gap: '0.5rem'
             }}
           >
             <input
@@ -285,7 +291,7 @@ export function ChatWidget() {
                 border: '1px solid #d1d5db',
                 borderRadius: '0.5rem',
                 fontSize: '0.875rem',
-                outline: 'none',
+                outline: 'none'
               }}
               disabled={loading}
             />
@@ -294,10 +300,12 @@ export function ChatWidget() {
               disabled={loading || !input.trim()}
               style={{
                 padding: '0.75rem',
-                background: input.trim() ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#e5e7eb',
+                background: input.trim()
+                  ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                  : '#e5e7eb',
                 color: 'white',
                 borderRadius: '0.5rem',
-                cursor: input.trim() ? 'pointer' : 'not-allowed',
+                cursor: input.trim() ? 'pointer' : 'not-allowed'
               }}
             >
               <Send size={18} />

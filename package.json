@@ -4,15 +4,17 @@
   "private": true,
   "description": "AI-powered MCP server for dropshipping automation",
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "turbo dev --parallel",
+    "dev:api": "cd apps/api && pnpm dev",
+    "dev:web": "cd apps/web && pnpm dev",
+    "dev:watch": "concurrently \"pnpm dev:api\" \"pnpm dev:web\"",
     "build": "turbo build",
     "test": "turbo test",
     "lint": "turbo lint",
-    "dev:api": "turbo dev --filter=@dropship/api",
-    "dev:web": "turbo dev --filter=@dropship/web",
     "clean": "turbo clean && rm -rf node_modules"
   },
   "devDependencies": {
+    "concurrently": "^8.2.2",
     "turbo": "^2.0.0",
     "typescript": "^5.3.0"
   },

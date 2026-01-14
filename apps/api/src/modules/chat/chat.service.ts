@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Groq from 'groq-sdk';
+import { Ollama } from 'ollama';
 import { PrismaService } from '../../common/prisma.service';
 import { McpService } from '../mcp/mcp.service';
 
@@ -22,7 +22,7 @@ interface ToolCall {
 
 @Injectable()
 export class ChatService {
-  private groq: Groq | null = null;
+  private ollama: Ollama | null = null;
   private systemPrompt = `You are an AI assistant for a dropshipping automation platform. You help users manage their e-commerce stores (WooCommerce & Shopify), fulfill orders, track inventory, and analyze profits.
 
 Available actions you can perform:
@@ -44,9 +44,27 @@ If the user speaks in Roman Urdu (like "orders dikhao"), respond in Roman Urdu t
     private readonly prisma: PrismaService,
     private readonly mcpService: McpService,
   ) {
-    const apiKey = this.configService.get<string>('GROQ_API_KEY');
-    if (apiKey) {
-      this.groq = new Groq({ apiKey });
+    // Initialize Ollama
+    const ollamaUrl = this.configService.get<string>('OLLAMA_URL', 'http://localhost:11434');
+    try {
+      this.ollama = new Ollama({ host: ollamaUrl });
+      // Check if Ollama is available
+      this.checkOllamaConnection();
+      console.log('[ChatService] Using Ollama for chat');
+    } catch (error: any) {
+      console.log('[ChatService] Ollama not available:', error?.message);
+    }
+  }
+
+  private async checkOllamaConnection() {
+    try {
+      if (this.ollama) {
+        await this.ollama.list();
+        console.log('[ChatService] Ollama is available');
+      }
+    } catch (error: any) {
+      console.log('[ChatService] Ollama is not running. Start it with: ollama serve');
+      this.ollama = null;
     }
   }
 
@@ -57,9 +75,9 @@ If the user speaks in Roman Urdu (like "orders dikhao"), respond in Roman Urdu t
     // Save user message
     await this.saveMessage(userId, 'user', message);
 
-    // If no Groq API key, return helpful message
-    if (!this.groq) {
-      const reply = 'AI service not configured. Please add GROQ_API_KEY to your environment variables. Get a free key at https://console.groq.com';
+    // Check if Ollama is available
+    if (!this.ollama) {
+      const reply = 'AI service not configured. Please install Ollama (https://ollama.com) and start it with: ollama serve';
       await this.saveMessage(userId, 'assistant', reply);
       return { reply };
     }
@@ -75,17 +93,11 @@ If the user speaks in Roman Urdu (like "orders dikhao"), respond in Roman Urdu t
     const tools = this.getToolDefinitions();
 
     try {
-      // Call Groq LLM
-      const response = await this.groq.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
-        messages: messages as Groq.Chat.ChatCompletionMessageParam[],
-        tools,
-        tool_choice: 'auto',
-        max_tokens: 1024,
-      });
+      let assistantMessage: any;
+      let toolResults: unknown[] = [];
 
-      const assistantMessage = response.choices[0].message;
-      const toolResults: unknown[] = [];
+      // Use Ollama
+      assistantMessage = await this.chatWithOllama(messages, tools);
 
       // Check if LLM wants to call tools
       if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
@@ -112,13 +124,10 @@ If the user speaks in Roman Urdu (like "orders dikhao"), respond in Roman Urdu t
         }
 
         // Get final response from LLM with tool results
-        const finalResponse = await this.groq.chat.completions.create({
-          model: 'llama-3.3-70b-versatile',
-          messages: messages as Groq.Chat.ChatCompletionMessageParam[],
-          max_tokens: 1024,
-        });
+        let finalResponse: any;
+        finalResponse = await this.chatWithOllama(messages, []);
 
-        const reply = finalResponse.choices[0].message.content || 'Done!';
+        const reply = finalResponse.content || 'Done!';
         await this.saveMessage(userId, 'assistant', reply, toolResults);
         return { reply, toolResults };
       }
@@ -133,6 +142,51 @@ If the user speaks in Roman Urdu (like "orders dikhao"), respond in Roman Urdu t
       const reply = 'Sorry, I encountered an error. Please try again.';
       await this.saveMessage(userId, 'assistant', reply);
       return { reply };
+    }
+  }
+
+  private async chatWithOllama(messages: ChatMessage[], tools: any[]) {
+    if (!this.ollama) {
+      throw new Error('Ollama not configured');
+    }
+
+    // Convert messages to Ollama format
+    const ollamaMessages = messages.map(m => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    // Pull model if not available (using llama3.2)
+    const modelName = 'llama3.2';
+    
+    try {
+      // Check if model exists
+      const models = await this.ollama.list();
+      const modelExists = models.models.some(m => m.name.includes(modelName));
+      
+      if (!modelExists) {
+        console.log(`[ChatService] Pulling ${modelName} model...`);
+        await this.ollama.pull({ model: modelName });
+      }
+
+      // Generate response
+      const response = await this.ollama.chat({
+        model: modelName,
+        messages: ollamaMessages,
+        stream: false,
+        options: {
+          temperature: 0.7,
+          num_predict: 1024,
+        },
+      });
+
+      return {
+        content: response.message.content,
+        tool_calls: [], // Ollama doesn't support tool calls directly yet
+      };
+    } catch (error) {
+      console.error('[ChatService] Ollama error:', error);
+      throw error;
     }
   }
 
@@ -162,7 +216,7 @@ If the user speaks in Roman Urdu (like "orders dikhao"), respond in Roman Urdu t
     });
   }
 
-  private getToolDefinitions(): Groq.Chat.ChatCompletionTool[] {
+  private getToolDefinitions(): any[] {
     return [
       {
         type: 'function',
