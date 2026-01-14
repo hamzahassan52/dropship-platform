@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const token = (session as any).accessToken || (session as any).user?.accessToken;
 
     // Call backend API
-    const response = await fetch(`${API_BASE}/chat`, {
+    const response = await fetch(`${API_BASE}/api/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
