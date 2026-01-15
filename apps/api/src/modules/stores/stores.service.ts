@@ -15,6 +15,7 @@ export interface ShopifyCredentials {
 export interface StoreCredentials {
   woocommerce?: WooCommerceCredentials;
   shopify?: ShopifyCredentials;
+  webhookSecret?: string;
 }
 
 export interface CreateStoreDto {
@@ -241,6 +242,7 @@ export class StoresService {
     platform: StorePlatform;
     storeUrl: string;
     credentials: StoreCredentials;
+    webhookSecret: string | null;
   } | null> {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
@@ -248,6 +250,7 @@ export class StoresService {
         platform: true,
         storeUrl: true,
         credentials: true,
+        webhookSecret: true,
       },
     });
 
@@ -257,7 +260,32 @@ export class StoresService {
       platform: store.platform,
       storeUrl: store.storeUrl,
       credentials: store.credentials as StoreCredentials,
+      webhookSecret: store.webhookSecret,
     };
+  }
+
+  /**
+   * Update webhook secret for a store
+   */
+  async updateWebhookSecret(storeId: string, webhookSecret: string): Promise<boolean> {
+    try {
+      await this.prisma.store.update({
+        where: { id: storeId },
+        data: { webhookSecret },
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Get store by ID (for internal use, no userId check)
+   */
+  async getStoreById(storeId: string) {
+    return this.prisma.store.findUnique({
+      where: { id: storeId },
+    });
   }
 
   /**

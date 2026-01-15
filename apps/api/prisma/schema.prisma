@@ -42,20 +42,23 @@ model ChatMessage {
 }
 
 model Store {
-  id          String         @id @default(cuid())
-  userId      String
-  name        String
-  platform    StorePlatform
-  storeUrl    String
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  credentials Json
-  isActive    Boolean        @default(true)
-  lastSyncAt  DateTime?
-  settings    Json?
-  orders      Order[]
-  products    StoreProduct[]
-  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String           @id @default(cuid())
+  userId          String
+  name            String
+  platform        StorePlatform
+  storeUrl        String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  credentials     Json
+  isActive        Boolean          @default(true)
+  lastSyncAt      DateTime?
+  settings        Json?
+  webhookSecret   String?
+  orders          Order[]
+  products        StoreProduct[]
+  productMappings ProductMapping[]
+  webhookLogs     WebhookLog[]
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("stores")
 }
@@ -160,6 +163,43 @@ model Supplier {
   updatedAt    DateTime @updatedAt
 
   @@map("suppliers")
+}
+
+// Product mapping for SKU to CJ Product ID mapping
+model ProductMapping {
+  id            String   @id @default(cuid())
+  storeId       String
+  wooProductId  Int
+  wooSku        String
+  cjProductId   String
+  cjVariantId   String?
+  supplierPrice Float
+  shippingCost  Float    @default(0)
+  isActive      Boolean  @default(true)
+  isTestProduct Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, wooProductId])
+  @@unique([storeId, wooSku])
+  @@map("product_mappings")
+}
+
+// Webhook event logging for audit trail
+model WebhookLog {
+  id         String   @id @default(cuid())
+  storeId    String
+  topic      String
+  deliveryId String   @unique
+  payload    Json
+  processed  Boolean  @default(false)
+  error      String?
+  createdAt  DateTime @default(now())
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, createdAt])
+  @@map("webhook_logs")
 }
 
 enum UserPlan {

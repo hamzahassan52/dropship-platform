@@ -11,6 +11,8 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { RefundsModule } from './modules/refunds/refunds.module';
 import { StoresModule } from './modules/stores/stores.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { TestModule } from './modules/test/test.module';
 import { PrismaService } from './common/prisma.service';
 
 @Global()
@@ -31,6 +33,8 @@ import { PrismaService } from './common/prisma.service';
     InventoryModule,
     RefundsModule,
     StoresModule,
+    WebhooksModule,
+    TestModule,
   ],
   providers: [PrismaService],
   exports: [PrismaService],

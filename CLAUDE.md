@@ -6,17 +6,17 @@
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| **Backend** | NestJS + TypeScript + Prisma + PostgreSQL |
-| **Frontend** | Next.js 14 (App Router, Server Components) |
-| **Auth (Backend)** | JWT (Passport.js + bcryptjs) |
+| Layer               | Technology                                         |
+| ------------------- | -------------------------------------------------- |
+| **Backend**         | NestJS + TypeScript + Prisma + PostgreSQL          |
+| **Frontend**        | Next.js 14 (App Router, Server Components)         |
+| **Auth (Backend)**  | JWT (Passport.js + bcryptjs)                       |
 | **Auth (Frontend)** | NextAuth.js (Google, Apple, Facebook, Credentials) |
-| **AI** | Groq SDK (FREE llama-3.3-70b-versatile) |
-| **Integrations** | WooCommerce, Shopify, CJ Dropshipping |
-| **Scheduler** | @nestjs/schedule (Cron Jobs) |
-| **Email** | Nodemailer |
-| **Monorepo** | Turborepo + pnpm |
+| **AI**              | Ollama (FREE llama-3.3-70b-versatile)              |
+| **Integrations**    | WooCommerce, Shopify, CJ Dropshipping              |
+| **Scheduler**       | @nestjs/schedule (Cron Jobs)                       |
+| **Email**           | Nodemailer                                         |
+| **Monorepo**        | Turborepo + pnpm                                   |
 
 ---
 
@@ -73,8 +73,8 @@
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                          EXTERNAL SERVICES                                   │
 │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐            │
-│  │ PostgreSQL │  │   Groq AI  │  │   SMTP     │  │ Store APIs │            │
-│  │  Database  │  │   (FREE)   │  │   Email    │  │ WC/Shopify │            │
+│  │ PostgreSQL │  │   ollama   │  │   SMTP     │  │ Store APIs │            │
+│  │  Database  │  │lma3.2 (FREE)│  │   Email    │  │ WC/Shopify │            │
 │  └────────────┘  └────────────┘  └────────────┘  └────────────┘            │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -154,74 +154,74 @@ dropship-platform/
 
 ### Authentication System
 
-| Feature | Status | Description |
-|---------|--------|-------------|
-| **Email/Password Signup** | ✅ | First Name, Last Name, Email, Password |
-| **Email/Password Login** | ✅ | Email, Password with validation |
-| **Google OAuth** | ✅ | Continue with Google button |
-| **Apple OAuth** | ✅ | Continue with Apple button |
-| **Facebook OAuth** | ✅ | Continue with Facebook button |
-| **NextAuth.js** | ✅ | Session management, JWT tokens |
-| **Route Protection** | ✅ | Middleware redirects to /login |
-| **JWT Backend Auth** | ✅ | Passport.js + bcryptjs |
+| Feature                   | Status | Description                            |
+| ------------------------- | ------ | -------------------------------------- |
+| **Email/Password Signup** | ✅     | First Name, Last Name, Email, Password |
+| **Email/Password Login**  | ✅     | Email, Password with validation        |
+| **Google OAuth**          | ✅     | Continue with Google button            |
+| **Apple OAuth**           | ✅     | Continue with Apple button             |
+| **Facebook OAuth**        | ✅     | Continue with Facebook button          |
+| **NextAuth.js**           | ✅     | Session management, JWT tokens         |
+| **Route Protection**      | ✅     | Middleware redirects to /login         |
+| **JWT Backend Auth**      | ✅     | Passport.js + bcryptjs                 |
 
 ### Frontend Pages
 
-| Page | Route | Features |
-|------|-------|----------|
-| **Login** | `/login` | Social login buttons, email/password form, forgot password link |
-| **Signup** | `/signup` | Social buttons, firstname/lastname/email/password, terms link |
-| **Dashboard** | `/` | Stats cards, revenue chart, recent orders, store overview |
-| **Stores** | `/stores` | Store list, add store button, store cards |
-| **Store Detail** | `/stores/[id]` | Store stats, orders, products, settings tabs |
-| **Orders** | `/orders` | Order list, filters, fulfill buttons |
+| Page             | Route          | Features                                                        |
+| ---------------- | -------------- | --------------------------------------------------------------- |
+| **Login**        | `/login`       | Social login buttons, email/password form, forgot password link |
+| **Signup**       | `/signup`      | Social buttons, firstname/lastname/email/password, terms link   |
+| **Dashboard**    | `/`            | Stats cards, revenue chart, recent orders, store overview       |
+| **Stores**       | `/stores`      | Store list, add store button, store cards                       |
+| **Store Detail** | `/stores/[id]` | Store stats, orders, products, settings tabs                    |
+| **Orders**       | `/orders`      | Order list, filters, fulfill buttons                            |
 
 ### UI Components
 
-| Component | Description |
-|-----------|-------------|
-| **Sidebar** | Collapsible with smooth animation, nav links |
-| **ChatWidget** | Floating AI chat bubble, message history |
-| **StoreCard** | Store info with platform icon, stats |
-| **SalesChart** | Revenue visualization |
-| **Providers** | NextAuth SessionProvider wrapper |
+| Component      | Description                                  |
+| -------------- | -------------------------------------------- |
+| **Sidebar**    | Collapsible with smooth animation, nav links |
+| **ChatWidget** | Floating AI chat bubble, message history     |
+| **StoreCard**  | Store info with platform icon, stats         |
+| **SalesChart** | Revenue visualization                        |
+| **Providers**  | NextAuth SessionProvider wrapper             |
 
 ### Backend Modules
 
-| Module | Endpoints | Description |
-|--------|-----------|-------------|
-| **Auth** | POST /auth/signup, POST /auth/login, GET /auth/me | User authentication |
-| **Chat** | POST /chat, GET /chat/history, DELETE /chat/history | AI chat with Groq |
-| **Stores** | GET/POST /stores, DELETE /stores/:id | Store management |
-| **Orders** | GET /orders, POST /orders/fulfill/:id | Order processing |
-| **Dashboard** | GET /dashboard | Stats overview |
-| **Inventory** | POST /inventory/sync | Stock synchronization |
-| **Scheduler** | (Background) | Auto-fulfill, tracking sync, inventory sync |
+| Module        | Endpoints                                           | Description                                 |
+| ------------- | --------------------------------------------------- | ------------------------------------------- |
+| **Auth**      | POST /auth/signup, POST /auth/login, GET /auth/me   | User authentication                         |
+| **Chat**      | POST /chat, GET /chat/history, DELETE /chat/history | AI chat with Groq                           |
+| **Stores**    | GET/POST /stores, DELETE /stores/:id                | Store management                            |
+| **Orders**    | GET /orders, POST /orders/fulfill/:id               | Order processing                            |
+| **Dashboard** | GET /dashboard                                      | Stats overview                              |
+| **Inventory** | POST /inventory/sync                                | Stock synchronization                       |
+| **Scheduler** | (Background)                                        | Auto-fulfill, tracking sync, inventory sync |
 
 ### 11 AI Tools (MCP Service)
 
-| # | Tool | Description |
-|---|------|-------------|
-| 1 | `search_products` | Search CJ Dropshipping catalog |
-| 2 | `get_pending_orders` | Get orders needing fulfillment |
-| 3 | `fulfill_orders` | Send orders to supplier |
-| 4 | `get_business_stats` | Revenue, profit, order stats |
-| 5 | `sync_tracking` | Sync tracking from supplier |
-| 6 | `import_product` | Import product to store |
-| 7 | `sync_inventory` | Sync stock levels |
-| 8 | `calculate_profit` | Calculate profit margin |
-| 9 | `process_refund` | Handle refund/cancellation |
-| 10 | `manage_store` | Add/remove/list stores |
-| 11 | `get_all_stores_orders` | Orders across all stores |
+| #   | Tool                    | Description                    |
+| --- | ----------------------- | ------------------------------ |
+| 1   | `search_products`       | Search CJ Dropshipping catalog |
+| 2   | `get_pending_orders`    | Get orders needing fulfillment |
+| 3   | `fulfill_orders`        | Send orders to supplier        |
+| 4   | `get_business_stats`    | Revenue, profit, order stats   |
+| 5   | `sync_tracking`         | Sync tracking from supplier    |
+| 6   | `import_product`        | Import product to store        |
+| 7   | `sync_inventory`        | Sync stock levels              |
+| 8   | `calculate_profit`      | Calculate profit margin        |
+| 9   | `process_refund`        | Handle refund/cancellation     |
+| 10  | `manage_store`          | Add/remove/list stores         |
+| 11  | `get_all_stores_orders` | Orders across all stores       |
 
 ### Automated Cron Jobs
 
-| Schedule | Task | Description |
-|----------|------|-------------|
-| Every Hour | Auto-fulfill | Fulfill pending orders automatically |
-| Every 2 Hours | Sync Tracking | Update tracking numbers from CJ |
-| Every 6 Hours | Sync Inventory | Update stock levels |
-| Daily 9 AM | Daily Report | Email summary report |
+| Schedule      | Task           | Description                          |
+| ------------- | -------------- | ------------------------------------ |
+| Every Hour    | Auto-fulfill   | Fulfill pending orders automatically |
+| Every 2 Hours | Sync Tracking  | Update tracking numbers from CJ      |
+| Every 6 Hours | Sync Inventory | Update stock levels                  |
+| Daily 9 AM    | Daily Report   | Email summary report                 |
 
 ---
 
@@ -296,8 +296,7 @@ DATABASE_URL="postgresql://user:password@localhost:5432/dropship"
 # JWT
 JWT_SECRET=your-super-secret-jwt-key
 
-# Groq AI (FREE)
-GROQ_API_KEY=gsk_xxxxx
+# Ollama is installed on y computer i am using llama3.2 model please use it for ai chatting to mcp tools
 
 # CJ Dropshipping
 CJ_API_KEY=your-cj-api-key
@@ -342,6 +341,7 @@ APPLE_SECRET=your-apple-secret
 ## OAuth Setup Guide
 
 ### Google OAuth
+
 1. Go to https://console.developers.google.com
 2. Create new project → OAuth consent screen
 3. Create OAuth 2.0 credentials
@@ -349,12 +349,14 @@ APPLE_SECRET=your-apple-secret
 5. Copy Client ID & Secret to `.env.local`
 
 ### Facebook OAuth
+
 1. Go to https://developers.facebook.com
 2. Create new app → Facebook Login
 3. Add redirect URI: `http://localhost:3000/api/auth/callback/facebook`
 4. Copy App ID & Secret to `.env.local`
 
 ### Apple OAuth
+
 1. Go to https://developer.apple.com
 2. Create App ID → Enable Sign in with Apple
 3. Create Service ID with redirect URI
@@ -420,39 +422,238 @@ APPLE_SECRET=your-apple-secret
 
 ---
 
+---
+
+## 🚀 ORDER AUTOMATION SYSTEM (MVP)
+
+### Goal
+
+Fully automated dropshipping: Customer places order → System auto-fulfills to CJ → Tracking syncs back → Customer gets email.
+
+### Complete Order Automation Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     END-TO-END ORDER AUTOMATION FLOW                         │
+│                                                                              │
+│  PHASE 1: ORDER DETECTION                                                   │
+│  ┌─────────────────┐         ┌─────────────────┐                           │
+│  │  WooCommerce    │ ──────► │    Webhook      │ ──► Order detected        │
+│  │  Order Created  │   OR    │   Endpoint      │                           │
+│  └─────────────────┘         └─────────────────┘                           │
+│                               ┌─────────────────┐                           │
+│                               │  Cron Polling   │ ──► Every hour backup    │
+│                               └─────────────────┘                           │
+│                                        │                                     │
+│                                        ▼                                     │
+│  PHASE 2: VALIDATION & ENRICHMENT                                           │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  • Validate shipping address                                         │   │
+│  │  • Map WooCommerce SKU → CJ Product ID                              │   │
+│  │  • Check product availability                                        │   │
+│  │  • Calculate profit margins                                          │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                        │                                     │
+│                                        ▼                                     │
+│  PHASE 3: CJ ORDER PLACEMENT                                                │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  CJ_SIMULATION_MODE=true  →  Simulated order (no payment)           │   │
+│  │  CJ_SIMULATION_MODE=false →  Real CJ order (charges balance)        │   │
+│  │                                                                      │   │
+│  │  • Send order to CJ Dropshipping API                                │   │
+│  │  • Receive CJ Order ID                                              │   │
+│  │  • Save to database with status=PROCESSING                          │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                        │                                     │
+│                                        ▼                                     │
+│  PHASE 4: TRACKING SYNCHRONIZATION (Every 2 hours)                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  • Poll CJ API for tracking numbers                                 │   │
+│  │  • Update database: status=SHIPPED, trackingNumber=xxx              │   │
+│  │  • Push tracking to WooCommerce order                               │   │
+│  │  • Update WooCommerce status to "completed"                         │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                        │                                     │
+│                                        ▼                                     │
+│  PHASE 5: CUSTOMER EMAIL NOTIFICATIONS                                      │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  📧 Order Confirmation  - When order received                       │   │
+│  │  📧 Shipping Notification - When tracking available                 │   │
+│  │  📧 Delivery Confirmation - When delivered                          │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### MCP Tools for Order Automation
+
+The 11 MCP tools enable AI-assisted and manual control of the entire dropshipping operation:
+
+| Tool                    | Purpose                     | Example Usage                        |
+| ----------------------- | --------------------------- | ------------------------------------ |
+| `manage_store`          | Add/remove/list stores      | Connect WooCommerce or Shopify store |
+| `search_products`       | Find products in CJ catalog | Search for trending products         |
+| `import_product`        | Import CJ product to store  | Add product with custom price        |
+| `get_pending_orders`    | Get unfulfilled orders      | See what needs processing            |
+| `fulfill_orders`        | Send orders to CJ           | Auto-fulfill single or all orders    |
+| `sync_tracking`         | Get tracking from CJ        | Update customers with shipping info  |
+| `sync_inventory`        | Sync stock levels           | Keep store inventory accurate        |
+| `get_business_stats`    | Revenue/profit analytics    | Daily, weekly, monthly stats         |
+| `calculate_profit`      | Calculate margins           | Before importing a product           |
+| `process_refund`        | Handle returns              | Refund or cancel orders              |
+| `get_all_stores_orders` | Multi-store overview        | Aggregate order data                 |
+
+### Testing the Automation (Step by Step)
+
+```bash
+# 1. Start the backend server
+cd apps/api
+pnpm run dev
+
+# 2. Check system status
+curl http://localhost:4000/api/test/status
+
+# 3. Add a WooCommerce store via MCP tool
+curl -X POST http://localhost:4000/api/mcp/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool":"manage_store","params":{"action":"add","name":"My Store","platform":"WOOCOMMERCE","storeUrl":"https://mystore.com","consumerKey":"ck_xxx","consumerSecret":"cs_xxx"}}'
+
+# 4. Search for products
+curl -X POST http://localhost:4000/api/mcp/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool":"search_products","params":{"query":"wireless earbuds","limit":5}}'
+
+# 5. Import a product to your store
+curl -X POST http://localhost:4000/api/mcp/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool":"import_product","params":{"cjProductId":"xxx","sellingPrice":29.99,"title":"Premium Wireless Earbuds"}}'
+
+# 6. Get pending orders
+curl -X POST http://localhost:4000/api/mcp/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool":"get_pending_orders","params":{}}'
+
+# 7. Fulfill orders (simulation mode)
+curl -X POST http://localhost:4000/api/mcp/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool":"fulfill_orders","params":{"all":true}}'
+
+# 8. Sync tracking numbers
+curl -X POST http://localhost:4000/api/mcp/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool":"sync_tracking","params":{}}'
+
+# 9. Get business stats
+curl -X POST http://localhost:4000/api/mcp/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool":"get_business_stats","params":{"period":"today"}}'
+```
+
+### Webhook Configuration (WooCommerce)
+
+1. Go to WooCommerce → Settings → Advanced → Webhooks
+2. Add new webhook:
+   - **Name**: Order Created
+   - **Status**: Active
+   - **Topic**: Order created
+   - **Delivery URL**: `https://your-api.com/api/webhooks/woocommerce/{storeId}`
+   - **Secret**: Generate and save (used for signature verification)
+3. Repeat for "Order updated" topic
+
+### Environment Variables for Order Automation
+
+```env
+# CJ Dropshipping
+CJ_API_KEY=your-cj-api-key
+CJ_EMAIL=your-cj-email
+CJ_PASSWORD=your-cj-password
+
+# CRITICAL: Simulation Mode (for testing without real payments)
+CJ_SIMULATION_MODE=true   # Set to 'false' for production
+
+# Automation Control
+AUTO_FULFILL_ENABLED=true        # Auto-fulfill every hour
+AUTO_SYNC_TRACKING_ENABLED=true  # Sync tracking every 2 hours
+AUTO_SYNC_INVENTORY_ENABLED=true # Sync stock every 6 hours
+
+# Notifications
+NOTIFICATION_EMAIL=admin@yourstore.com
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+```
+
+### Database Models for Order Automation
+
+```prisma
+// Product mapping for SKU → CJ Product ID
+model ProductMapping {
+  id            String   @id
+  storeId       String
+  wooProductId  Int      // WooCommerce product ID
+  wooSku        String   // WooCommerce SKU
+  cjProductId   String   // CJ Product/Variant ID
+  supplierPrice Float    // Cost from CJ
+  isTestProduct Boolean  // Flag for test products
+}
+
+// Webhook event logging
+model WebhookLog {
+  id         String   @id
+  storeId    String
+  topic      String   // order.created, order.updated
+  deliveryId String   // Unique webhook delivery ID
+  payload    Json     // Full webhook payload
+  processed  Boolean  // Was it processed successfully?
+  error      String?  // Error message if failed
+}
+```
+
+### Cron Job Schedule
+
+| Schedule                      | Job            | Function                                  |
+| ----------------------------- | -------------- | ----------------------------------------- |
+| `0 * * * *` (Every hour)      | Auto-Fulfill   | `ordersService.fulfillAllPendingOrders()` |
+| `0 */2 * * *` (Every 2 hours) | Sync Tracking  | `ordersService.syncTrackingNumbers()`     |
+| `0 */6 * * *` (Every 6 hours) | Sync Inventory | `inventoryService.syncAllInventory()`     |
+| `0 9 * * *` (Daily 9 AM)      | Daily Report   | Email summary to admin                    |
+
+---
+
 ## What's Next?
 
-### Immediate (To Test)
-1. [ ] Setup PostgreSQL database
-2. [ ] Run Prisma migrations
-3. [ ] Start backend server
-4. [ ] Test signup/login flow
-5. [ ] Test AI chat functionality
+### ✅ Completed
 
-### High Priority
-1. [ ] Add OAuth credentials (Google, Facebook, Apple)
-2. [ ] Connect real WooCommerce/Shopify store
-3. [ ] Test order fulfillment flow
-4. [ ] Add auth guards to all backend routes
+1. [x] Database schema with Order, OrderItem, ProductMapping, WebhookLog
+2. [x] CJ Dropshipping integration with simulation mode
+3. [x] Webhook endpoints for WooCommerce
+4. [x] Order fulfillment flow (webhook → CJ → tracking)
+5. [x] Customer email notifications
+6. [x] 11 MCP tools for automation control
+7. [x] Cron jobs for auto-processing
 
-### Medium Priority
-1. [ ] Product import page (CJ → Store)
-2. [ ] Detailed analytics page
-3. [ ] User settings page
-4. [ ] Password reset flow
+### 🔄 In Progress
 
-### Nice to Have
-1. [ ] Dark mode toggle
-2. [ ] Export data (CSV/PDF)
-3. [ ] In-app notifications
-4. [ ] Mobile responsive improvements
+1. [ ] End-to-end testing with real WooCommerce store
+2. [ ] Fix MCP tool execution endpoint
+
+### 📋 Next Steps
+
+1. [ ] Test full flow: Order → Fulfill → Track → Email
+2. [ ] Configure real WooCommerce webhook
+3. [ ] Import test product with CJ mapping
+4. [ ] Place test order and watch automation
+5. [ ] Verify customer receives tracking email
 
 ---
 
 ## Notes
 
+I am not sure we that will be help full or not this cj developer , i think tis will be helpfull for api calling to cj dropshipping you cna get information form here as well you cna fetch information from here for apis
+https://developers.cjdropshipping.com/en/api/introduction.html
+
 - Roman Urdu mein baat karo (AI supports it)
-- Groq API FREE hai: 6000 requests/day
-- USE_MOCK=true for testing without backend
+- Ollama with llama3.2 for local AI chat
+- CJ_SIMULATION_MODE=true for testing without payment
 - Each user's data is isolated (multi-tenant)
 - Cron jobs run automatically when backend starts

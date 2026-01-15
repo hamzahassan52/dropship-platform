@@ -7,12 +7,21 @@ import type { Product, ProductSearchParams } from '@dropship/types';
 export class CjDropshippingService {
   private client: AxiosInstance;
   private accessToken: string | null = null;
+  private simulationMode: boolean;
 
   constructor(private configService: ConfigService) {
     this.client = axios.create({
       baseURL: 'https://developers.cjdropshipping.com/api2.0/v1',
       timeout: 30000,
     });
+    this.simulationMode = this.configService.get('CJ_SIMULATION_MODE') === 'true';
+  }
+
+  /**
+   * Check if simulation mode is enabled
+   */
+  isSimulationMode(): boolean {
+    return this.simulationMode;
   }
 
   private async getAccessToken(): Promise<string> {
@@ -102,9 +111,18 @@ export class CjDropshippingService {
   // ============ ORDER MANAGEMENT ============
 
   /**
-   * Place order on CJ Dropshipping
+   * Place order on CJ Dropshipping (with simulation support)
    */
-  async placeOrder(orderData: CJOrderRequest): Promise<string | null> {
+  async placeOrder(
+    orderData: CJOrderRequest,
+    options?: { forceSimulation?: boolean },
+  ): Promise<CJOrderPlacementResult> {
+    const simulate = options?.forceSimulation ?? this.simulationMode;
+
+    if (simulate) {
+      return this.simulatePlaceOrder(orderData);
+    }
+
     try {
       const token = await this.getAccessToken();
 
@@ -130,19 +148,73 @@ export class CjDropshippingService {
       );
 
       if (response.data.result && response.data.data?.orderId) {
-        return response.data.data.orderId;
+        return {
+          success: true,
+          cjOrderId: response.data.data.orderId,
+          error: null,
+          simulated: false,
+        };
       }
 
-      return null;
-    } catch {
-      return null;
+      return {
+        success: false,
+        cjOrderId: null,
+        error: response.data.message || 'CJ API returned no order ID',
+        simulated: false,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        cjOrderId: null,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        simulated: false,
+      };
     }
   }
 
   /**
-   * Get order tracking information
+   * Simulate CJ order placement for testing (no actual charges)
    */
-  async getOrderTracking(cjOrderId: string): Promise<CJTrackingInfo | null> {
+  private async simulatePlaceOrder(orderData: CJOrderRequest): Promise<CJOrderPlacementResult> {
+    const simulatedOrderId = `SIM-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    console.log('[CJ SIMULATION] Order placed:', {
+      orderNumber: orderData.orderNumber,
+      simulatedOrderId,
+      items: orderData.items.length,
+      country: orderData.shippingAddress.country,
+    });
+
+    // Simulate processing delay
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    return {
+      success: true,
+      cjOrderId: simulatedOrderId,
+      error: null,
+      simulated: true,
+      simulationDetails: {
+        orderNumber: orderData.orderNumber,
+        itemCount: orderData.items.length,
+        shippingCountry: orderData.shippingAddress.country,
+      },
+    };
+  }
+
+  /**
+   * Get order tracking information (with simulation support)
+   */
+  async getOrderTracking(
+    cjOrderId: string,
+    options?: { forceSimulation?: boolean },
+  ): Promise<CJTrackingInfo | null> {
+    const simulate = options?.forceSimulation ?? this.simulationMode;
+
+    // Check if this is a simulated order
+    if (simulate || cjOrderId.startsWith('SIM-')) {
+      return this.simulateGetTracking(cjOrderId);
+    }
+
     try {
       const token = await this.getAccessToken();
 
@@ -159,6 +231,7 @@ export class CjDropshippingService {
           trackingNumber: orderData.trackingNumber || null,
           carrier: orderData.logisticName || 'CJ Logistics',
           shippedAt: orderData.shippingTime || null,
+          simulated: false,
         };
       }
 
@@ -166,6 +239,52 @@ export class CjDropshippingService {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Simulate tracking retrieval for test orders
+   */
+  private async simulateGetTracking(cjOrderId: string): Promise<CJTrackingInfo> {
+    // Parse order creation time from ID
+    const orderTimestamp = cjOrderId.startsWith('SIM-')
+      ? parseInt(cjOrderId.split('-')[1])
+      : Date.now();
+
+    const orderAge = Date.now() - orderTimestamp;
+    const minutesSinceOrder = orderAge / (1000 * 60);
+
+    // Simulate realistic tracking progression (faster for testing)
+    let status = 'CREATED';
+    let trackingNumber: string | null = null;
+    let shippedAt: string | null = null;
+
+    if (minutesSinceOrder > 1) {
+      status = 'PROCESSING';
+    }
+    if (minutesSinceOrder > 2) {
+      status = 'SHIPPED';
+      trackingNumber = `SIMTRK${Math.random().toString(36).substr(2, 12).toUpperCase()}`;
+      shippedAt = new Date(orderTimestamp + 2 * 60 * 1000).toISOString();
+    }
+    if (minutesSinceOrder > 10) {
+      status = 'DELIVERED';
+    }
+
+    console.log('[CJ SIMULATION] Tracking fetched:', {
+      orderId: cjOrderId,
+      status,
+      trackingNumber,
+      minutesSinceOrder: Math.round(minutesSinceOrder),
+    });
+
+    return {
+      orderId: cjOrderId,
+      status,
+      trackingNumber,
+      carrier: 'CJ Simulation Carrier',
+      shippedAt,
+      simulated: true,
+    };
   }
 
   /**
@@ -315,6 +434,19 @@ export interface CJTrackingInfo {
   trackingNumber: string | null;
   carrier: string;
   shippedAt: string | null;
+  simulated?: boolean;
+}
+
+export interface CJOrderPlacementResult {
+  success: boolean;
+  cjOrderId: string | null;
+  error: string | null;
+  simulated: boolean;
+  simulationDetails?: {
+    orderNumber: string;
+    itemCount: number;
+    shippingCountry: string;
+  };
 }
 
 export interface CJOrderInfo {

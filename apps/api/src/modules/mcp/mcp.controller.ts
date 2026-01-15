@@ -1,8 +1,16 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import { Controller, Get, Post, Body, Logger } from '@nestjs/common';
 import { McpService } from './mcp.service';
+
+// DTO for tool execution
+class ExecuteToolDto {
+  tool: string;
+  params?: Record<string, unknown>;
+}
 
 @Controller('mcp')
 export class McpController {
+  private readonly logger = new Logger(McpController.name);
+
   constructor(private readonly mcpService: McpService) {}
 
   /**
@@ -19,7 +27,8 @@ export class McpController {
    * Execute an MCP tool
    */
   @Post('execute')
-  async executeTool(@Body() body: { tool: string; params?: Record<string, unknown> }) {
+  async executeTool(@Body() body: ExecuteToolDto) {
+    this.logger.log(`Executing tool: ${body.tool} with params: ${JSON.stringify(body.params)}`);
     const result = await this.mcpService.executeTool(body.tool, body.params || {});
     return result;
   }
