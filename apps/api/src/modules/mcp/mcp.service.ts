@@ -1,4 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
+// Original Tools
 import { SearchProductsTool } from './tools/search-products.tool';
 import { GetPendingOrdersTool } from './tools/get-pending-orders.tool';
 import { FulfillOrdersTool } from './tools/fulfill-orders.tool';
@@ -10,10 +11,20 @@ import { CalculateProfitTool } from './tools/calculate-profit.tool';
 import { ProcessRefundTool } from './tools/process-refund.tool';
 import { ManageStoreTool } from './tools/manage-store.tool';
 import { AllStoresOrdersTool } from './tools/all-stores-orders.tool';
+// New Tools
+import { GetProductsTool } from './tools/get-products.tool';
+import { UpdateProductPriceTool } from './tools/update-product-price.tool';
+import { GetCustomersTool } from './tools/get-customers.tool';
+import { SendNotificationTool } from './tools/send-notification.tool';
+import { CreateCouponTool } from './tools/create-coupon.tool';
+import { GetShippingRatesTool } from './tools/get-shipping-rates.tool';
+import { BulkImportProductsTool } from './tools/bulk-import-products.tool';
+import { AnalyticsReportTool } from './tools/analytics-report.tool';
 
 @Injectable()
 export class McpService implements OnModuleInit {
   constructor(
+    // Original tools
     private readonly searchProductsTool: SearchProductsTool,
     private readonly getPendingOrdersTool: GetPendingOrdersTool,
     private readonly fulfillOrdersTool: FulfillOrdersTool,
@@ -25,6 +36,15 @@ export class McpService implements OnModuleInit {
     private readonly processRefundTool: ProcessRefundTool,
     private readonly manageStoreTool: ManageStoreTool,
     private readonly allStoresOrdersTool: AllStoresOrdersTool,
+    // New tools
+    private readonly getProductsTool: GetProductsTool,
+    private readonly updateProductPriceTool: UpdateProductPriceTool,
+    private readonly getCustomersTool: GetCustomersTool,
+    private readonly sendNotificationTool: SendNotificationTool,
+    private readonly createCouponTool: CreateCouponTool,
+    private readonly getShippingRatesTool: GetShippingRatesTool,
+    private readonly bulkImportProductsTool: BulkImportProductsTool,
+    private readonly analyticsReportTool: AnalyticsReportTool,
   ) {}
 
   async onModuleInit() {
@@ -33,6 +53,7 @@ export class McpService implements OnModuleInit {
 
   getAvailableTools(): string[] {
     return [
+      // Original 11 tools
       'search_products',
       'get_pending_orders',
       'fulfill_orders',
@@ -44,11 +65,21 @@ export class McpService implements OnModuleInit {
       'process_refund',
       'manage_store',
       'get_all_stores_orders',
+      // New 8 tools
+      'get_products',
+      'update_product_price',
+      'get_customers',
+      'send_notification',
+      'create_coupon',
+      'get_shipping_rates',
+      'bulk_import_products',
+      'analytics_report',
     ];
   }
 
   getToolDefinitions() {
     return [
+      // Original tools
       this.searchProductsTool.getToolDefinition(),
       this.getPendingOrdersTool.getToolDefinition(),
       this.fulfillOrdersTool.getToolDefinition(),
@@ -60,6 +91,15 @@ export class McpService implements OnModuleInit {
       this.processRefundTool.getToolDefinition(),
       this.manageStoreTool.getToolDefinition(),
       this.allStoresOrdersTool.getToolDefinition(),
+      // New tools
+      this.getProductsTool.getToolDefinition(),
+      this.updateProductPriceTool.getToolDefinition(),
+      this.getCustomersTool.getToolDefinition(),
+      this.sendNotificationTool.getToolDefinition(),
+      this.createCouponTool.getToolDefinition(),
+      this.getShippingRatesTool.getToolDefinition(),
+      this.bulkImportProductsTool.getToolDefinition(),
+      this.analyticsReportTool.getToolDefinition(),
     ];
   }
 
@@ -132,6 +172,102 @@ export class McpService implements OnModuleInit {
             storeId?: string;
             limit?: number;
             stats?: boolean;
+          },
+        );
+
+      // New tools
+      case 'get_products':
+        return this.getProductsTool.execute(
+          params as {
+            storeId?: string;
+            search?: string;
+            category?: string;
+            status?: string;
+            limit?: number;
+            page?: number;
+          },
+        );
+
+      case 'update_product_price':
+        return this.updateProductPriceTool.execute(
+          params as {
+            productId: number;
+            regularPrice?: number;
+            salePrice?: number;
+            storeId?: string;
+          },
+        );
+
+      case 'get_customers':
+        return this.getCustomersTool.execute(
+          params as {
+            storeId?: string;
+            search?: string;
+            limit?: number;
+            orderBy?: 'orders' | 'spent' | 'recent';
+          },
+        );
+
+      case 'send_notification':
+        return this.sendNotificationTool.execute(
+          params as {
+            to?: string;
+            orderId?: string;
+            type: 'custom' | 'order_confirmation' | 'shipping_update' | 'delivery_confirmation' | 'refund';
+            subject?: string;
+            message?: string;
+            trackingNumber?: string;
+          },
+        );
+
+      case 'create_coupon':
+        return this.createCouponTool.execute(
+          params as {
+            code?: string;
+            discountType: 'percent' | 'fixed_cart' | 'fixed_product';
+            amount: number;
+            description?: string;
+            expiryDate?: string;
+            usageLimit?: number;
+            usageLimitPerUser?: number;
+            minimumAmount?: number;
+            maximumAmount?: number;
+            freeShipping?: boolean;
+            productIds?: number[];
+            excludedProductIds?: number[];
+          },
+        );
+
+      case 'get_shipping_rates':
+        return this.getShippingRatesTool.execute(
+          params as {
+            productId: string;
+            country: string;
+            quantity?: number;
+            province?: string;
+          },
+        );
+
+      case 'bulk_import_products':
+        return this.bulkImportProductsTool.execute(
+          params as {
+            productIds?: string[];
+            searchQuery?: string;
+            categoryId?: string;
+            limit?: number;
+            priceMultiplier?: number;
+            storeId?: string;
+            status?: 'publish' | 'draft' | 'pending';
+          },
+        );
+
+      case 'analytics_report':
+        return this.analyticsReportTool.execute(
+          params as {
+            reportType: 'sales' | 'products' | 'customers' | 'profit' | 'overview' | 'trends';
+            period?: string;
+            storeId?: string;
+            limit?: number;
           },
         );
 

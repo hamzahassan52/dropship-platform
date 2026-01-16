@@ -56,7 +56,7 @@
 │       │             ▼             │             │             │             │
 │       │    ┌────────────────┐     │             │             │             │
 │       │    │   MCP Service  │◄────┴─────────────┴─────────────┘             │
-│       │    │  (11 AI Tools) │                                               │
+│       │    │  (19 AI Tools) │                                               │
 │       │    └───────┬────────┘                                               │
 │       │            │                                                        │
 │       ▼            ▼                                                        │
@@ -98,7 +98,7 @@ dropship-platform/
 │   │   │   │   ├── chat/                 # AI Chat with Groq
 │   │   │   │   │   ├── chat.controller.ts
 │   │   │   │   │   └── chat.service.ts
-│   │   │   │   ├── mcp/                  # 11 Automation Tools
+│   │   │   │   ├── mcp/                  # 19 Automation Tools
 │   │   │   │   ├── stores/               # Store Management
 │   │   │   │   ├── orders/               # Order Processing
 │   │   │   │   ├── dashboard/            # Stats & Analytics
@@ -198,7 +198,9 @@ dropship-platform/
 | **Inventory** | POST /inventory/sync                                | Stock synchronization                       |
 | **Scheduler** | (Background)                                        | Auto-fulfill, tracking sync, inventory sync |
 
-### 11 AI Tools (MCP Service)
+### 19 AI Tools (MCP Service)
+
+**Original 11 Tools:**
 
 | #   | Tool                    | Description                    |
 | --- | ----------------------- | ------------------------------ |
@@ -211,8 +213,21 @@ dropship-platform/
 | 7   | `sync_inventory`        | Sync stock levels              |
 | 8   | `calculate_profit`      | Calculate profit margin        |
 | 9   | `process_refund`        | Handle refund/cancellation     |
-| 10  | `manage_store`          | Add/remove/list stores         |
+| 10  | `manage_store`          | Add/remove/list/test stores    |
 | 11  | `get_all_stores_orders` | Orders across all stores       |
+
+**New 8 Tools (Added January 2026):**
+
+| #   | Tool                    | Description                                                |
+| --- | ----------------------- | ---------------------------------------------------------- |
+| 12  | `get_products`          | List store products with filters (search, category, status)|
+| 13  | `update_product_price`  | Update product regular/sale price                          |
+| 14  | `get_customers`         | Get customer list, top buyers by orders/spending           |
+| 15  | `send_notification`     | Send email (custom, order confirm, shipping, delivery)     |
+| 16  | `create_coupon`         | Create discount coupons (%, fixed, free shipping)          |
+| 17  | `get_shipping_rates`    | Get CJ shipping rates for product to country               |
+| 18  | `bulk_import_products`  | Import multiple products from CJ (by search/category)      |
+| 19  | `analytics_report`      | Sales, products, customers, profit, trends reports         |
 
 ### Automated Cron Jobs
 
@@ -486,11 +501,13 @@ Fully automated dropshipping: Customer places order → System auto-fulfills to 
 
 ### MCP Tools for Order Automation
 
-The 11 MCP tools enable AI-assisted and manual control of the entire dropshipping operation:
+The 19 MCP tools enable AI-assisted and manual control of the entire dropshipping operation:
+
+**Core Automation Tools:**
 
 | Tool                    | Purpose                     | Example Usage                        |
 | ----------------------- | --------------------------- | ------------------------------------ |
-| `manage_store`          | Add/remove/list stores      | Connect WooCommerce or Shopify store |
+| `manage_store`          | Add/remove/list/test stores | Connect WooCommerce or Shopify store |
 | `search_products`       | Find products in CJ catalog | Search for trending products         |
 | `import_product`        | Import CJ product to store  | Add product with custom price        |
 | `get_pending_orders`    | Get unfulfilled orders      | See what needs processing            |
@@ -501,6 +518,19 @@ The 11 MCP tools enable AI-assisted and manual control of the entire dropshippin
 | `calculate_profit`      | Calculate margins           | Before importing a product           |
 | `process_refund`        | Handle returns              | Refund or cancel orders              |
 | `get_all_stores_orders` | Multi-store overview        | Aggregate order data                 |
+
+**New Store Management Tools:**
+
+| Tool                    | Purpose                     | Example Usage                        |
+| ----------------------- | --------------------------- | ------------------------------------ |
+| `get_products`          | List store products         | Filter by status, category, search   |
+| `update_product_price`  | Update product pricing      | Set regular/sale prices              |
+| `get_customers`         | Customer analytics          | Top buyers, total customers          |
+| `send_notification`     | Email customers             | Order confirm, shipping, custom      |
+| `create_coupon`         | Create discount codes       | % off, fixed, free shipping          |
+| `get_shipping_rates`    | CJ shipping rates           | Get rates for product to country     |
+| `bulk_import_products`  | Bulk import from CJ         | Import by search query or category   |
+| `analytics_report`      | Detailed reports            | Sales, profit, trends, overview      |
 
 ### Testing the Automation (Step by Step)
 
@@ -629,13 +659,22 @@ model WebhookLog {
 3. [x] Webhook endpoints for WooCommerce
 4. [x] Order fulfillment flow (webhook → CJ → tracking)
 5. [x] Customer email notifications (Thank you + Shipping)
-6. [x] 11 MCP tools for automation control + 1 new (test connection)
+6. [x] **19 MCP tools total** (11 original + 8 new tools)
 7. [x] Cron jobs for auto-processing
 8. [x] **Fixed MCP tool execution endpoint** (JSON body parsing issue)
 9. [x] **AI Chat with Ollama llama3.2** working
 10. [x] **Store connection test** before adding (WooCommerce + Shopify)
 11. [x] **Thank you email** sent to customer on order received
 12. [x] **E2E test passed**: Order → CJ Fulfillment → Tracking Sync → Email
+13. [x] **8 New MCP Tools Added**:
+    - `get_products` - List products with filters
+    - `update_product_price` - Update pricing
+    - `get_customers` - Customer analytics
+    - `send_notification` - Email notifications
+    - `create_coupon` - Discount codes
+    - `get_shipping_rates` - CJ shipping rates
+    - `bulk_import_products` - Bulk import from CJ
+    - `analytics_report` - Detailed business reports
 
 ### 📋 Next Steps (Priority Order)
 
@@ -656,6 +695,57 @@ model WebhookLog {
 | **Thank You Email** | Send order confirmation email to customer when order received | `orders.service.ts` |
 | **AI Chat with Ollama** | Chat service integrated with local Ollama llama3.2 | `chat.service.ts` |
 | **Test Chat Endpoint** | Public `/api/chat/test` for development testing | `chat.controller.ts` |
+| **8 New MCP Tools** | Complete store management and analytics tools | See new tools below |
+
+### 🛠 New MCP Tools Details
+
+**get_products** - List store products
+```bash
+curl -X POST http://localhost:4000/api/mcp/run -H "Content-Type: application/json" \
+  -d '{"tool":"get_products","params":{"search":"shirt","status":"publish","limit":10}}'
+```
+
+**update_product_price** - Update pricing
+```bash
+curl -X POST http://localhost:4000/api/mcp/run -H "Content-Type: application/json" \
+  -d '{"tool":"update_product_price","params":{"productId":123,"regularPrice":29.99,"salePrice":19.99}}'
+```
+
+**get_customers** - Customer analytics
+```bash
+curl -X POST http://localhost:4000/api/mcp/run -H "Content-Type: application/json" \
+  -d '{"tool":"get_customers","params":{"orderBy":"spent","limit":10}}'
+```
+
+**send_notification** - Email notifications
+```bash
+curl -X POST http://localhost:4000/api/mcp/run -H "Content-Type: application/json" \
+  -d '{"tool":"send_notification","params":{"orderId":"order-id","type":"shipping_update","trackingNumber":"TRK123"}}'
+```
+
+**create_coupon** - Discount codes
+```bash
+curl -X POST http://localhost:4000/api/mcp/run -H "Content-Type: application/json" \
+  -d '{"tool":"create_coupon","params":{"code":"SAVE20","discountType":"percent","amount":20,"expiryDate":"2026-12-31"}}'
+```
+
+**get_shipping_rates** - CJ shipping rates
+```bash
+curl -X POST http://localhost:4000/api/mcp/run -H "Content-Type: application/json" \
+  -d '{"tool":"get_shipping_rates","params":{"productId":"cj-product-id","country":"US","quantity":2}}'
+```
+
+**bulk_import_products** - Bulk import from CJ
+```bash
+curl -X POST http://localhost:4000/api/mcp/run -H "Content-Type: application/json" \
+  -d '{"tool":"bulk_import_products","params":{"searchQuery":"wireless earbuds","limit":10,"priceMultiplier":2.5,"status":"draft"}}'
+```
+
+**analytics_report** - Detailed reports
+```bash
+curl -X POST http://localhost:4000/api/mcp/run -H "Content-Type: application/json" \
+  -d '{"tool":"analytics_report","params":{"reportType":"overview","period":"month"}}'
+```
 
 ### 📊 Testing Commands
 
