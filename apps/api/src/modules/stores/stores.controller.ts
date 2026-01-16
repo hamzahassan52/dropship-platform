@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Inject, forwardRef } from '@nestjs/common';
 import { StoresService, CreateStoreDto, UpdateStoreDto } from './stores.service';
 import { WooCommerceService } from '../../integrations/woocommerce/woocommerce.service';
 import { ShopifyService } from '../../integrations/shopify/shopify.service';
+import { WebhookSetupService } from '../webhooks/webhook-setup.service';
 
 @Controller('stores')
 export class StoresController {
@@ -9,6 +10,8 @@ export class StoresController {
     private readonly storesService: StoresService,
     private readonly wooCommerce: WooCommerceService,
     private readonly shopify: ShopifyService,
+    @Inject(forwardRef(() => WebhookSetupService))
+    private readonly webhookSetupService: WebhookSetupService,
   ) {}
 
   // For now, using a default user ID. In production, get from auth token
@@ -93,5 +96,42 @@ export class StoresController {
         error: error.message || 'Connection test failed',
       };
     }
+  }
+
+  // ============ SYNC ENDPOINTS ============
+
+  @Post(':storeId/sync')
+  async syncStore(@Param('storeId') storeId: string) {
+    return this.storesService.syncStore(this.getUserId(), storeId);
+  }
+
+  @Post(':storeId/sync/orders')
+  async syncOrders(@Param('storeId') storeId: string) {
+    return this.storesService.syncOrders(this.getUserId(), storeId);
+  }
+
+  @Post(':storeId/sync/products')
+  async syncProducts(@Param('storeId') storeId: string) {
+    return this.storesService.syncProducts(this.getUserId(), storeId);
+  }
+
+  // ============ WEBHOOK ENDPOINTS ============
+
+  @Get(':storeId/webhooks')
+  async getWebhookStatus(@Param('storeId') storeId: string) {
+    const store = await this.storesService.getStoreById(storeId);
+    if (!store) {
+      return { success: false, error: 'Store not found' };
+    }
+    return this.webhookSetupService.verifyWebhooksActive(store);
+  }
+
+  @Post(':storeId/webhooks/repair')
+  async repairWebhooks(@Param('storeId') storeId: string) {
+    const store = await this.storesService.getStoreById(storeId);
+    if (!store) {
+      return { success: false, error: 'Store not found' };
+    }
+    return this.webhookSetupService.repairWebhooks(store);
   }
 }

@@ -125,11 +125,20 @@ model Order {
   customerName    String?
   externalOrderId String?
   notes           String?
+
+  // Fulfillment retry fields
+  fulfillmentStatus    FulfillmentStatus @default(PENDING)
+  fulfillmentAttempts  Int               @default(0)
+  lastFulfillmentError String?
+  nextRetryAt          DateTime?
+
   items           OrderItem[]
+  failedOrder     FailedOrder?
   store           Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
   user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([storeId, externalOrderId])
+  @@index([fulfillmentStatus, nextRetryAt])
   @@map("orders")
 }
 
@@ -224,4 +233,30 @@ enum OrderStatus {
   DELIVERED
   CANCELLED
   REFUNDED
+}
+
+enum FulfillmentStatus {
+  PENDING
+  PROCESSING
+  RETRY_1
+  RETRY_2
+  RETRY_3
+  FULFILLED
+  FAILED
+  CANCELLED
+}
+
+// Track failed orders for retry management
+model FailedOrder {
+  id          String    @id @default(cuid())
+  orderId     String    @unique
+  attempts    Int       @default(0)
+  lastError   String
+  nextRetryAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([nextRetryAt])
+  @@map("failed_orders")
 }

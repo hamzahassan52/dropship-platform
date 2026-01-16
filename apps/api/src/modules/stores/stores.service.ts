@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma.service';
 import { StorePlatform } from '@prisma/client';
+import { WebhookSetupService } from '../webhooks/webhook-setup.service';
 
 export interface WooCommerceCredentials {
   consumerKey: string;
@@ -46,7 +47,11 @@ export interface UpdateStoreDto {
 export class StoresService {
   private readonly logger = new Logger(StoresService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => WebhookSetupService))
+    private webhookSetupService: WebhookSetupService,
+  ) {}
 
   /**
    * Add a new store
@@ -89,6 +94,19 @@ export class StoresService {
 
     this.logger.log(`Store added: ${store.name} (${store.platform})`);
 
+    // Setup webhooks automatically
+    let webhookResult = { success: false, created: [] as string[], failed: [] as string[] };
+    try {
+      webhookResult = await this.webhookSetupService.setupStoreWebhooks(store);
+      if (webhookResult.success) {
+        this.logger.log(`Webhooks setup successfully for store ${store.id}`);
+      } else {
+        this.logger.warn(`Some webhooks failed for store ${store.id}: ${webhookResult.failed.join(', ')}`);
+      }
+    } catch (error: any) {
+      this.logger.error(`Failed to setup webhooks for store ${store.id}: ${error?.message}`);
+    }
+
     return {
       success: true,
       store: {
@@ -97,6 +115,10 @@ export class StoresService {
         platform: store.platform,
         storeUrl: store.storeUrl,
         isActive: store.isActive,
+      },
+      webhooks: {
+        created: webhookResult.created,
+        failed: webhookResult.failed,
       },
     };
   }
@@ -161,6 +183,14 @@ export class StoresService {
         success: false,
         error: `Cannot remove store with ${pendingOrders} pending orders`,
       };
+    }
+
+    // Remove webhooks first
+    try {
+      await this.webhookSetupService.removeStoreWebhooks(store);
+      this.logger.log(`Webhooks removed for store ${store.id}`);
+    } catch (error: any) {
+      this.logger.error(`Failed to remove webhooks for store ${store.id}: ${error?.message}`);
     }
 
     await this.prisma.store.delete({
@@ -379,6 +409,81 @@ export class StoresService {
       where: { id: storeId },
       data: { lastSyncAt: new Date() },
     });
+  }
+
+  // ============ SYNC METHODS ============
+
+  /**
+   * Full store sync (orders + products)
+   */
+  async syncStore(userId: string, storeId: string) {
+    const store = await this.prisma.store.findFirst({
+      where: { id: storeId, userId },
+    });
+
+    if (!store) {
+      return { success: false, error: 'Store not found' };
+    }
+
+    const ordersResult = await this.syncOrders(userId, storeId);
+    const productsResult = await this.syncProducts(userId, storeId);
+
+    await this.updateLastSync(storeId);
+
+    return {
+      success: true,
+      orders: ordersResult,
+      products: productsResult,
+      syncedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Sync orders from store
+   */
+  async syncOrders(userId: string, storeId: string) {
+    const store = await this.prisma.store.findFirst({
+      where: { id: storeId, userId },
+      include: { orders: { select: { externalOrderId: true } } },
+    });
+
+    if (!store) {
+      return { success: false, error: 'Store not found', synced: 0, new: 0 };
+    }
+
+    const existingOrderIds = new Set(store.orders.map(o => o.externalOrderId));
+
+    // This would integrate with actual platform APIs
+    // For now, return a placeholder
+    this.logger.log(`Syncing orders for store ${storeId}`);
+
+    return {
+      success: true,
+      synced: 0,
+      new: 0,
+      message: 'Order sync initiated',
+    };
+  }
+
+  /**
+   * Sync products from store
+   */
+  async syncProducts(userId: string, storeId: string) {
+    const store = await this.prisma.store.findFirst({
+      where: { id: storeId, userId },
+    });
+
+    if (!store) {
+      return { success: false, error: 'Store not found', synced: 0 };
+    }
+
+    this.logger.log(`Syncing products for store ${storeId}`);
+
+    return {
+      success: true,
+      synced: 0,
+      message: 'Product sync initiated',
+    };
   }
 
   private normalizeUrl(url: string): string {

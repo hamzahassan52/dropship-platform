@@ -2,10 +2,9 @@
 
 import Link from 'next/link';
 import { Power, Trash2, RefreshCw, ExternalLink } from 'lucide-react';
-import { Store } from '@/lib/api';
-import { mockStoreStats } from '@/lib/mock-data';
+import { Store, syncStore } from '@/lib/api';
 import { removeStore, toggleStore } from '@/lib/actions';
-import { useTransition } from 'react';
+import { useTransition, useState } from 'react';
 
 interface StoresListProps {
   stores: Store[];
@@ -23,7 +22,7 @@ export function StoresList({ stores }: StoresListProps) {
 
 function StoreItem({ store }: { store: Store }) {
   const [isPending, startTransition] = useTransition();
-  const stats = mockStoreStats[store.id] || mockStoreStats['store-1'];
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const handleToggle = () => {
     startTransition(async () => {
@@ -36,6 +35,17 @@ function StoreItem({ store }: { store: Store }) {
     startTransition(async () => {
       await removeStore(store.id);
     });
+  };
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      await syncStore(store.id);
+    } catch (error) {
+      console.error('Sync failed:', error);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   return (
@@ -74,18 +84,12 @@ function StoreItem({ store }: { store: Store }) {
 
       <div className="store-stats">
         <div className="store-stat">
-          <div className="store-stat-value">{stats.totalOrders}</div>
+          <div className="store-stat-value">{store.orderCount || 0}</div>
           <div className="store-stat-label">Orders</div>
         </div>
         <div className="store-stat">
-          <div className="store-stat-value">${(stats.totalRevenue / 1000).toFixed(1)}k</div>
-          <div className="store-stat-label">Revenue</div>
-        </div>
-        <div className="store-stat">
-          <div className="store-stat-value" style={{ color: 'var(--success)' }}>
-            ${(stats.totalProfit / 1000).toFixed(1)}k
-          </div>
-          <div className="store-stat-label">Profit</div>
+          <div className="store-stat-value">{store.productCount || 0}</div>
+          <div className="store-stat-label">Products</div>
         </div>
       </div>
 
@@ -114,8 +118,10 @@ function StoreItem({ store }: { store: Store }) {
         <button
           className="btn btn-secondary btn-sm"
           title="Sync"
+          onClick={handleSync}
+          disabled={isSyncing}
         >
-          <RefreshCw size={14} />
+          <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
         </button>
         <button
           className="btn btn-danger btn-sm"

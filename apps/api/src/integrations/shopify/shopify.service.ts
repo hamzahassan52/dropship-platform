@@ -352,6 +352,80 @@ export class ShopifyService {
     }
   }
 
+  // ============ WEBHOOKS ============
+
+  async createWebhook(
+    storeUrl: string,
+    accessToken: string,
+    topic: string,
+    address: string,
+  ): Promise<{ id: number; topic: string } | null> {
+    try {
+      const client = this.createClient(storeUrl, accessToken);
+      const response = await client.post('/webhooks.json', {
+        webhook: {
+          topic,
+          address,
+          format: 'json',
+        },
+      });
+      const webhook = response.data.webhook;
+      return { id: webhook.id, topic: webhook.topic };
+    } catch (error: any) {
+      console.error(`[Shopify] Failed to create webhook: ${error?.message}`);
+      return null;
+    }
+  }
+
+  async deleteWebhook(
+    storeUrl: string,
+    accessToken: string,
+    webhookId: number,
+  ): Promise<boolean> {
+    try {
+      const client = this.createClient(storeUrl, accessToken);
+      await client.delete(`/webhooks/${webhookId}.json`);
+      return true;
+    } catch (error: any) {
+      console.error(`[Shopify] Failed to delete webhook: ${error?.message}`);
+      return false;
+    }
+  }
+
+  async listWebhooks(
+    storeUrl: string,
+    accessToken: string,
+  ): Promise<Array<{ id: number; topic: string; address: string }>> {
+    try {
+      const client = this.createClient(storeUrl, accessToken);
+      const response = await client.get('/webhooks.json');
+      return (response.data.webhooks || []).map((wh: any) => ({
+        id: wh.id,
+        topic: wh.topic,
+        address: wh.address,
+      }));
+    } catch (error: any) {
+      console.error(`[Shopify] Failed to list webhooks: ${error?.message}`);
+      return [];
+    }
+  }
+
+  async deleteWebhooksByUrl(
+    storeUrl: string,
+    accessToken: string,
+    urlPattern: string,
+  ): Promise<number> {
+    const webhooks = await this.listWebhooks(storeUrl, accessToken);
+    let deleted = 0;
+    for (const wh of webhooks) {
+      if (wh.address.includes(urlPattern)) {
+        const success = await this.deleteWebhook(storeUrl, accessToken, wh.id);
+        if (success) deleted++;
+      }
+    }
+    return deleted;
+  }
+
   // ============ UTILITY ============
 
   async testConnection(storeUrl: string, accessToken: string): Promise<boolean> {

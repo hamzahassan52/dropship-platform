@@ -3,6 +3,8 @@ import { PrismaService } from '../../common/prisma.service';
 import { WooCommerceService, WooOrder } from '../../integrations/woocommerce/woocommerce.service';
 import { CjDropshippingService, CJOrderPlacementResult } from '../../integrations/cj-dropshipping/cj-dropshipping.service';
 import { EmailService } from '../../common/email/email.service';
+import { OrderRetryService } from './order-retry.service';
+import { FulfillmentStatus } from '@prisma/client';
 
 export interface OrderSyncResult {
   success: boolean;
@@ -28,6 +30,7 @@ export class OrdersService {
     private wooCommerce: WooCommerceService,
     private cjDropshipping: CjDropshippingService,
     private emailService: EmailService,
+    private orderRetryService: OrderRetryService,
   ) {}
 
   /**
@@ -147,11 +150,16 @@ export class OrdersService {
       });
 
       if (!cjResult.success || !cjResult.cjOrderId) {
-        this.logger.error(`Failed to place order on CJ: ${cjResult.error}`);
+        const errorMsg = cjResult.error || 'Failed to place order on CJ';
+        this.logger.error(`Failed to place order on CJ: ${errorMsg}`);
+
+        // Save order first so we can retry it later
+        await this.saveFailedOrderForRetry(storeId, orderPayload, errorMsg);
+
         return {
           success: false,
           orderId: wooOrderId,
-          error: cjResult.error || 'Failed to place order on CJ',
+          error: errorMsg,
           simulated: cjResult.simulated,
         };
       }
@@ -587,6 +595,144 @@ export class OrdersService {
 
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Save failed order for retry
+   */
+  private async saveFailedOrderForRetry(
+    storeId: string,
+    orderPayload: any,
+    error: string,
+  ): Promise<void> {
+    try {
+      // Get userId from store
+      const store = await this.prisma.store.findUnique({
+        where: { id: storeId },
+        select: { userId: true },
+      });
+
+      const userId = store?.userId || 'default-user';
+      const billing = orderPayload.billing || {};
+      const shipping = orderPayload.shipping || {};
+      const total = parseFloat(orderPayload.total) || 0;
+
+      // Create order with RETRY_1 status
+      const order = await this.prisma.order.create({
+        data: {
+          userId,
+          storeId,
+          externalOrderId: String(orderPayload.id),
+          customerEmail: billing.email || '',
+          customerName: `${billing.first_name || ''} ${billing.last_name || ''}`.trim(),
+          shippingAddress: shipping as any,
+          subtotal: total,
+          shippingCost: 0,
+          total,
+          profit: 0,
+          status: 'PENDING',
+          fulfillmentStatus: FulfillmentStatus.PENDING,
+          fulfillmentAttempts: 0,
+          lastFulfillmentError: error,
+          items: {
+            create: (orderPayload.line_items || []).map((item: any) => ({
+              productTitle: item.name || 'Unknown Product',
+              quantity: item.quantity || 1,
+              unitPrice: parseFloat(item.price) || 0,
+              supplierPrice: 0,
+              supplierProductId: item.sku || 'unknown',
+            })),
+          },
+        },
+      });
+
+      // Schedule retry
+      await this.orderRetryService.scheduleRetry(order, error);
+
+      this.logger.log(`Order ${orderPayload.id} saved for retry`);
+    } catch (err: any) {
+      this.logger.error(`Failed to save order for retry: ${err?.message}`);
+    }
+  }
+
+  /**
+   * Retry failed orders (called by scheduler)
+   */
+  async processRetryQueue(): Promise<{
+    processed: number;
+    successful: number;
+    failed: number;
+  }> {
+    const ordersToRetry = await this.orderRetryService.getOrdersForRetry();
+
+    if (ordersToRetry.length === 0) {
+      return { processed: 0, successful: 0, failed: 0 };
+    }
+
+    this.logger.log(`Processing ${ordersToRetry.length} orders from retry queue`);
+
+    let successful = 0;
+    let failed = 0;
+
+    for (const order of ordersToRetry) {
+      try {
+        // Update status to processing
+        await this.prisma.order.update({
+          where: { id: order.id },
+          data: { fulfillmentStatus: FulfillmentStatus.PROCESSING },
+        });
+
+        // Try to fulfill the order
+        const cjOrderData = {
+          orderNumber: `WOO-${order.externalOrderId}`,
+          shippingAddress: order.shippingAddress as any,
+          items: order.items.map(item => ({
+            sku: item.supplierProductId,
+            quantity: item.quantity,
+            cjProductId: item.supplierProductId,
+          })),
+        };
+
+        const cjResult = await this.cjDropshipping.placeOrder(cjOrderData);
+
+        if (cjResult.success && cjResult.cjOrderId) {
+          // Success! Update order
+          await this.prisma.order.update({
+            where: { id: order.id },
+            data: {
+              fulfillmentStatus: FulfillmentStatus.FULFILLED,
+              status: 'PROCESSING',
+              supplierOrderId: cjResult.cjOrderId,
+              lastFulfillmentError: null,
+              nextRetryAt: null,
+            },
+          });
+
+          // Remove from failed orders
+          await this.prisma.failedOrder.deleteMany({
+            where: { orderId: order.id },
+          });
+
+          successful++;
+          this.logger.log(`Order ${order.id} fulfilled successfully on retry`);
+        } else {
+          // Failed again, schedule next retry
+          await this.orderRetryService.scheduleRetry(order, cjResult.error || 'Unknown error');
+          failed++;
+        }
+      } catch (err: any) {
+        await this.orderRetryService.scheduleRetry(order, err?.message || 'Unknown error');
+        failed++;
+      }
+
+      await this.delay(500);
+    }
+
+    return {
+      processed: ordersToRetry.length,
+      successful,
+      failed,
+    };
   }
 }
 

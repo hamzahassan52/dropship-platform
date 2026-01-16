@@ -418,6 +418,131 @@ export class WooCommerceService {
     }
   }
 
+  // ============ WEBHOOKS ============
+
+  /**
+   * Create a webhook
+   */
+  async createWebhook(
+    storeUrl: string,
+    consumerKey: string,
+    consumerSecret: string,
+    topic: string,
+    deliveryUrl: string,
+    secret: string,
+  ): Promise<{ id: number; topic: string } | null> {
+    try {
+      let baseUrl = storeUrl.trim();
+      if (!baseUrl.startsWith('http')) {
+        baseUrl = 'https://' + baseUrl;
+      }
+      baseUrl = baseUrl.replace(/\/$/, '');
+
+      const client = axios.create({
+        baseURL: `${baseUrl}/wp-json/wc/v3`,
+        auth: { username: consumerKey, password: consumerSecret },
+        timeout: 30000,
+      });
+
+      const response = await client.post('/webhooks', {
+        name: `DropShip - ${topic}`,
+        topic,
+        delivery_url: deliveryUrl,
+        secret,
+        status: 'active',
+      });
+
+      return { id: response.data.id, topic: response.data.topic };
+    } catch (error: any) {
+      console.error(`[WooCommerce] Failed to create webhook: ${error?.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Delete a webhook
+   */
+  async deleteWebhook(
+    storeUrl: string,
+    consumerKey: string,
+    consumerSecret: string,
+    webhookId: number,
+  ): Promise<boolean> {
+    try {
+      let baseUrl = storeUrl.trim();
+      if (!baseUrl.startsWith('http')) {
+        baseUrl = 'https://' + baseUrl;
+      }
+      baseUrl = baseUrl.replace(/\/$/, '');
+
+      const client = axios.create({
+        baseURL: `${baseUrl}/wp-json/wc/v3`,
+        auth: { username: consumerKey, password: consumerSecret },
+        timeout: 30000,
+      });
+
+      await client.delete(`/webhooks/${webhookId}`, { params: { force: true } });
+      return true;
+    } catch (error: any) {
+      console.error(`[WooCommerce] Failed to delete webhook: ${error?.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * List all webhooks
+   */
+  async listWebhooks(
+    storeUrl: string,
+    consumerKey: string,
+    consumerSecret: string,
+  ): Promise<Array<{ id: number; topic: string; delivery_url: string; status: string }>> {
+    try {
+      let baseUrl = storeUrl.trim();
+      if (!baseUrl.startsWith('http')) {
+        baseUrl = 'https://' + baseUrl;
+      }
+      baseUrl = baseUrl.replace(/\/$/, '');
+
+      const client = axios.create({
+        baseURL: `${baseUrl}/wp-json/wc/v3`,
+        auth: { username: consumerKey, password: consumerSecret },
+        timeout: 30000,
+      });
+
+      const response = await client.get('/webhooks', { params: { per_page: 100 } });
+      return response.data.map((wh: any) => ({
+        id: wh.id,
+        topic: wh.topic,
+        delivery_url: wh.delivery_url,
+        status: wh.status,
+      }));
+    } catch (error: any) {
+      console.error(`[WooCommerce] Failed to list webhooks: ${error?.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * Delete webhooks by delivery URL pattern
+   */
+  async deleteWebhooksByUrl(
+    storeUrl: string,
+    consumerKey: string,
+    consumerSecret: string,
+    urlPattern: string,
+  ): Promise<number> {
+    const webhooks = await this.listWebhooks(storeUrl, consumerKey, consumerSecret);
+    let deleted = 0;
+    for (const wh of webhooks) {
+      if (wh.delivery_url.includes(urlPattern)) {
+        const success = await this.deleteWebhook(storeUrl, consumerKey, consumerSecret, wh.id);
+        if (success) deleted++;
+      }
+    }
+    return deleted;
+  }
+
   // ============ UTILITY ============
 
   /**

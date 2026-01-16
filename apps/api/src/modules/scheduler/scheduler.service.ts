@@ -130,4 +130,38 @@ export class SchedulerService {
       }
     }
   }
+
+  /**
+   * Process order retry queue every 5 minutes
+   */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async processRetryQueue() {
+    try {
+      const result = await this.ordersService.processRetryQueue();
+
+      if (result.processed > 0) {
+        this.logger.log(
+          `Retry queue: ${result.processed} processed, ${result.successful} succeeded, ${result.failed} failed`,
+        );
+
+        // Send notification if there were failures
+        if (this.notificationEmail && result.failed > 0) {
+          await this.emailService.sendErrorAlertEmail(
+            this.notificationEmail,
+            'Order Retry Queue Update',
+            `Processed ${result.processed} orders: ${result.successful} succeeded, ${result.failed} failed`,
+          );
+        }
+      }
+    } catch (error) {
+      this.logger.error('Retry queue processing failed', error);
+      if (this.notificationEmail) {
+        await this.emailService.sendErrorAlertEmail(
+          this.notificationEmail,
+          'Retry Queue Failed',
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
+    }
+  }
 }
