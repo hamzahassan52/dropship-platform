@@ -2,7 +2,31 @@
 
 import { revalidatePath } from 'next/cache';
 
-const API_BASE = process.env.API_URL || 'http://localhost:4000';
+// Use the correct env variable and add /api prefix
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000') + '/api';
+
+// Test Store Connection
+export async function testStoreConnection(data: {
+  platform: 'WOOCOMMERCE' | 'SHOPIFY';
+  storeUrl: string;
+  credentials: {
+    woocommerce?: { consumerKey: string; consumerSecret: string };
+    shopify?: { accessToken: string };
+  };
+}) {
+  try {
+    const res = await fetch(`${API_BASE}/stores/test-connection`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    const result = await res.json();
+    return result;
+  } catch (error) {
+    return { success: false, error: 'Failed to test connection' };
+  }
+}
 
 // Store Actions
 export async function addStore(formData: FormData) {

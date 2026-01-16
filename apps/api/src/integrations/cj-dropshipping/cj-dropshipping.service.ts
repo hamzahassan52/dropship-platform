@@ -355,6 +355,80 @@ export class CjDropshippingService {
   }
 
   /**
+   * Get shipping rates for a product
+   */
+  async getShippingRates(
+    productId: string,
+    countryCode: string,
+    quantity: number = 1,
+    province?: string,
+  ): Promise<any[]> {
+    if (this.simulationMode) {
+      // Return simulated rates
+      return [
+        { logisticName: 'CJ Packet', logisticPrice: 3.99, aging: '10-20 days', trackable: true },
+        { logisticName: 'ePacket', logisticPrice: 5.99, aging: '7-15 days', trackable: true },
+        { logisticName: 'DHL', logisticPrice: 19.99, aging: '3-7 days', trackable: true },
+      ];
+    }
+
+    try {
+      const token = await this.getAccessToken();
+
+      const response = await this.client.post(
+        '/logistic/freightCalculate',
+        {
+          startCountryCode: 'CN',
+          endCountryCode: countryCode,
+          endProvince: province,
+          products: [{ vid: productId, quantity }],
+        },
+        { headers: { 'CJ-Access-Token': token } },
+      );
+
+      if (response.data.result && response.data.data) {
+        return response.data.data;
+      }
+
+      return [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Get products by category
+   */
+  async getProductsByCategory(categoryId: string, limit: number = 20): Promise<Product[]> {
+    if (this.simulationMode) {
+      return [];
+    }
+
+    try {
+      const token = await this.getAccessToken();
+
+      const response = await this.client.get('/product/list', {
+        headers: { 'CJ-Access-Token': token },
+        params: {
+          categoryId,
+          pageNum: 1,
+          pageSize: Math.min(limit, 100),
+        },
+      });
+
+      if (!response.data.result || !response.data.data?.list) {
+        return [];
+      }
+
+      return response.data.data.list.map((item: CJProductResponse) =>
+        this.mapToProduct(item),
+      );
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * Check product stock availability
    */
   async checkStock(productId: string): Promise<{ inStock: boolean; quantity: number }> {

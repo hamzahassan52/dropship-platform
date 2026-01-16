@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Plus, X } from 'lucide-react';
-import { addStore } from '@/lib/actions';
+import { Plus, X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { addStore, testStoreConnection } from '@/lib/actions';
 
 interface AddStoreButtonProps {
   large?: boolean;
@@ -30,6 +30,65 @@ function AddStoreModal({ onClose }: { onClose: () => void }) {
   const [platform, setPlatform] = useState<'WOOCOMMERCE' | 'SHOPIFY'>('WOOCOMMERCE');
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState('');
+  const [testResult, setTestResult] = useState<{ success: boolean; message?: string; storeInfo?: any } | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
+
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+    setError('');
+
+    const form = document.getElementById('add-store-form') as HTMLFormElement;
+    const formData = new FormData(form);
+    const storeUrl = formData.get('storeUrl') as string;
+
+    if (!storeUrl) {
+      setError('Please enter store URL');
+      setIsTesting(false);
+      return;
+    }
+
+    const credentials = platform === 'WOOCOMMERCE'
+      ? {
+          woocommerce: {
+            consumerKey: formData.get('consumerKey') as string,
+            consumerSecret: formData.get('consumerSecret') as string,
+          },
+        }
+      : {
+          shopify: {
+            accessToken: formData.get('accessToken') as string,
+          },
+        };
+
+    // Validate credentials
+    if (platform === 'WOOCOMMERCE') {
+      if (!credentials.woocommerce?.consumerKey || !credentials.woocommerce?.consumerSecret) {
+        setError('Please enter Consumer Key and Consumer Secret');
+        setIsTesting(false);
+        return;
+      }
+    } else {
+      if (!credentials.shopify?.accessToken) {
+        setError('Please enter Access Token');
+        setIsTesting(false);
+        return;
+      }
+    }
+
+    try {
+      const result = await testStoreConnection({
+        platform,
+        storeUrl,
+        credentials,
+      });
+      setTestResult(result);
+    } catch (err) {
+      setError('Failed to test connection');
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   const handleSubmit = async (formData: FormData) => {
     formData.set('platform', platform);
@@ -55,12 +114,12 @@ function AddStoreModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        <form action={handleSubmit}>
+        <form id="add-store-form" action={handleSubmit}>
           {/* Platform Selection */}
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
             <button
               type="button"
-              onClick={() => setPlatform('WOOCOMMERCE')}
+              onClick={() => { setPlatform('WOOCOMMERCE'); setTestResult(null); }}
               style={{
                 flex: 1,
                 padding: '1rem',
@@ -74,7 +133,7 @@ function AddStoreModal({ onClose }: { onClose: () => void }) {
             </button>
             <button
               type="button"
-              onClick={() => setPlatform('SHOPIFY')}
+              onClick={() => { setPlatform('SHOPIFY'); setTestResult(null); }}
               style={{
                 flex: 1,
                 padding: '1rem',
@@ -95,9 +154,43 @@ function AddStoreModal({ onClose }: { onClose: () => void }) {
               padding: '0.75rem',
               borderRadius: '0.5rem',
               marginBottom: '1rem',
-              fontSize: '0.875rem'
+              fontSize: '0.875rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
             }}>
+              <AlertCircle size={16} />
               {error}
+            </div>
+          )}
+
+          {testResult && (
+            <div style={{
+              background: testResult.success ? '#dcfce7' : '#fee2e2',
+              color: testResult.success ? '#166534' : '#991b1b',
+              padding: '0.75rem',
+              borderRadius: '0.5rem',
+              marginBottom: '1rem',
+              fontSize: '0.875rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              {testResult.success ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+              <div>
+                {testResult.success ? (
+                  <>
+                    <strong>Connection Successful!</strong>
+                    {testResult.storeInfo && (
+                      <div style={{ marginTop: '0.25rem', fontSize: '0.8rem' }}>
+                        Store: {testResult.storeInfo.name} | Version: {testResult.storeInfo.version}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  testResult.message || 'Connection failed'
+                )}
+              </div>
             </div>
           )}
 
@@ -118,7 +211,7 @@ function AddStoreModal({ onClose }: { onClose: () => void }) {
               name="storeUrl"
               type="text"
               className="form-input"
-              placeholder={platform === 'WOOCOMMERCE' ? 'mystore.com' : 'mystore.myshopify.com'}
+              placeholder={platform === 'WOOCOMMERCE' ? 'https://mystore.com' : 'mystore.myshopify.com'}
               required
             />
           </div>
@@ -162,7 +255,40 @@ function AddStoreModal({ onClose }: { onClose: () => void }) {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+          {/* Test Connection Button */}
+          <button
+            type="button"
+            onClick={handleTestConnection}
+            disabled={isTesting}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              marginBottom: '1rem',
+              border: '2px solid var(--gray-300)',
+              borderRadius: '0.5rem',
+              background: 'white',
+              cursor: isTesting ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              fontWeight: 500,
+            }}
+          >
+            {isTesting ? (
+              <>
+                <Loader2 size={16} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} />
+                Testing...
+              </>
+            ) : (
+              <>
+                <CheckCircle size={16} />
+                Test Connection
+              </>
+            )}
+          </button>
+
+          <div style={{ display: 'flex', gap: '1rem' }}>
             <button
               type="button"
               onClick={onClose}
@@ -182,6 +308,13 @@ function AddStoreModal({ onClose }: { onClose: () => void }) {
           </div>
         </form>
       </div>
+
+      <style jsx>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

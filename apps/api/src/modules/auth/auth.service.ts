@@ -1,7 +1,8 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../common/prisma.service';
+import { EmailService } from '../../common/email/email.service';
 
 export interface SignupDto {
   email: string;
@@ -35,9 +36,12 @@ export interface AuthResponse {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly emailService: EmailService,
   ) {}
 
   async signup(dto: SignupDto): Promise<AuthResponse> {
@@ -71,11 +75,14 @@ export class AuthService {
       },
     });
 
-    console.log('[AuthService] User created successfully:', user.id);
+    this.logger.log(`User created successfully: ${user.id}`);
 
     // Generate token
     const token = this.generateToken(user.id, user.email);
-    console.log('[AuthService] Token generated successfully');
+    this.logger.log('Token generated successfully');
+
+    // Send beautiful Welcome email (async, don't wait)
+    this.sendWelcomeEmailAsync(user.email, fullName || 'there');
 
     return {
       user: {
@@ -86,6 +93,24 @@ export class AuthService {
       },
       token,
     };
+  }
+
+  /**
+   * Send welcome email asynchronously (non-blocking)
+   */
+  private async sendWelcomeEmailAsync(email: string, customerName: string): Promise<void> {
+    try {
+      await this.emailService.sendWelcomeEmail(email, {
+        customerName,
+        email,
+        shopUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+        discountCode: 'WELCOME10',
+        discountPercent: 10,
+      });
+      this.logger.log(`Welcome email sent to ${email}`);
+    } catch (error) {
+      this.logger.warn(`Failed to send welcome email to ${email}: ${error}`);
+    }
   }
 
   async login(dto: LoginDto): Promise<AuthResponse> {
@@ -171,6 +196,8 @@ export class AuthService {
       where: { email: dto.email.toLowerCase() },
     });
 
+    let isNewUser = false;
+
     if (!user) {
       // Create new user from social login
       user = await this.prisma.user.create({
@@ -184,6 +211,7 @@ export class AuthService {
           isVerified: true, // Social login users are verified
         },
       });
+      isNewUser = true;
     } else {
       // Update user info if changed
       user = await this.prisma.user.update({
@@ -200,6 +228,11 @@ export class AuthService {
 
     // Generate token
     const token = this.generateToken(user.id, user.email);
+
+    // Send welcome email for new social users
+    if (isNewUser) {
+      this.sendWelcomeEmailAsync(user.email, user.name || 'there');
+    }
 
     return {
       user: {

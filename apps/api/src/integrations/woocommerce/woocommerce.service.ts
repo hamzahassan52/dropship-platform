@@ -180,8 +180,9 @@ export class WooCommerceService {
   async getProducts(params?: {
     per_page?: number;
     page?: number;
-    category?: number;
+    category?: number | string;
     status?: string;
+    search?: string;
   }): Promise<WooProduct[]> {
     if (!this.isConfigured) return [];
 
@@ -286,6 +287,98 @@ export class WooCommerceService {
       return response.data;
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Get all customers
+   */
+  async getCustomers(params?: {
+    per_page?: number;
+    page?: number;
+    search?: string;
+    email?: string;
+    orderby?: string;
+    order?: 'asc' | 'desc';
+  }): Promise<any[]> {
+    if (!this.isConfigured) return [];
+
+    try {
+      const response = await this.client.get('/customers', { params });
+      return response.data;
+    } catch {
+      return [];
+    }
+  }
+
+  // ============ COUPONS ============
+
+  /**
+   * Create coupon
+   */
+  async createCoupon(couponData: {
+    code: string;
+    discount_type: 'percent' | 'fixed_cart' | 'fixed_product';
+    amount: string;
+    description?: string;
+    date_expires?: string;
+    usage_limit?: number;
+    usage_limit_per_user?: number;
+    minimum_amount?: string;
+    maximum_amount?: string;
+    free_shipping?: boolean;
+    product_ids?: number[];
+    excluded_product_ids?: number[];
+    individual_use?: boolean;
+  }): Promise<any> {
+    if (!this.isConfigured) return null;
+
+    try {
+      const response = await this.client.post('/coupons', couponData);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Failed to create coupon');
+    }
+  }
+
+  /**
+   * Update product price
+   */
+  async updateProductPrice(
+    productId: number,
+    regularPrice?: number,
+    salePrice?: number,
+  ): Promise<WooProduct | null> {
+    if (!this.isConfigured) return null;
+
+    try {
+      const updateData: any = {};
+      if (regularPrice !== undefined) {
+        updateData.regular_price = String(regularPrice);
+      }
+      if (salePrice !== undefined) {
+        updateData.sale_price = String(salePrice);
+      }
+      const response = await this.client.put(`/products/${productId}`, updateData);
+      return response.data;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Update product with any data
+   */
+  async updateProduct(productId: number, data: any): Promise<WooProduct> {
+    if (!this.isConfigured) {
+      throw new Error('WooCommerce not configured');
+    }
+
+    try {
+      const response = await this.client.put(`/products/${productId}`, data);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error?.response?.data?.message || 'Failed to update product');
     }
   }
 

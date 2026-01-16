@@ -8,8 +8,10 @@ import {
   mockStores,
 } from './mock-data';
 
-const API_BASE = process.env.API_URL || 'http://localhost:4000';
-const USE_MOCK = process.env.USE_MOCK === 'true' || true; // Enable mock by default for testing
+// Use the correct env variable and add /api prefix for NestJS backend
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000') + '/api';
+// Set USE_MOCK to false to use real backend - check env variable properly
+const USE_MOCK = process.env.USE_MOCK === 'true';
 
 export interface Store {
   id: string;
