@@ -1,24 +1,57 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { StoresService } from '../../stores/stores.service';
 import { StorePlatform } from '@prisma/client';
+import { PrismaService } from '../../../common/prisma.service';
+import { WooCommerceService } from '../../../integrations/woocommerce/woocommerce.service';
+import { ShopifyService } from '../../../integrations/shopify/shopify.service';
 
 @Injectable()
-export class ManageStoreTool {
+export class ManageStoreTool implements OnModuleInit {
   private readonly userId = 'default-user';
 
-  constructor(private readonly storesService: StoresService) {}
+  constructor(
+    private readonly storesService: StoresService,
+    private readonly prisma: PrismaService,
+    private readonly wooCommerce: WooCommerceService,
+    private readonly shopify: ShopifyService,
+  ) {}
+
+  async onModuleInit() {
+    // Ensure default user exists
+    await this.ensureDefaultUser();
+  }
+
+  private async ensureDefaultUser() {
+    const existingUser = await this.prisma.user.findUnique({
+      where: { id: this.userId },
+    });
+
+    if (!existingUser) {
+      await this.prisma.user.create({
+        data: {
+          id: this.userId,
+          email: 'default@dropship.local',
+          password: 'not-used',
+          firstName: 'Default',
+          lastName: 'User',
+          name: 'Default User',
+        },
+      });
+      console.log('[ManageStoreTool] Created default user');
+    }
+  }
 
   getToolDefinition() {
     return {
       name: 'manage_store',
-      description: 'Add, remove, list, or update stores. Supports WooCommerce and Shopify stores.',
+      description: 'Add, remove, list, test, or update stores. Supports WooCommerce and Shopify stores.',
       inputSchema: {
         type: 'object',
         properties: {
           action: {
             type: 'string',
-            enum: ['add', 'remove', 'list', 'toggle', 'stats'],
-            description: 'Action to perform: add new store, remove store, list all stores, toggle active status, or get store stats.',
+            enum: ['add', 'remove', 'list', 'toggle', 'stats', 'test'],
+            description: 'Action to perform: add new store, remove store, list all stores, toggle active status, get store stats, or test connection before adding.',
           },
           storeId: {
             type: 'string',
@@ -56,7 +89,7 @@ export class ManageStoreTool {
   }
 
   async execute(params: {
-    action: 'add' | 'remove' | 'list' | 'toggle' | 'stats';
+    action: 'add' | 'remove' | 'list' | 'toggle' | 'stats' | 'test';
     storeId?: string;
     name?: string;
     platform?: 'WOOCOMMERCE' | 'SHOPIFY';
@@ -81,9 +114,73 @@ export class ManageStoreTool {
       case 'stats':
         return this.getStoreStats(params.storeId);
 
+      case 'test':
+        return this.testConnection(params);
+
       default:
         return { success: false, error: 'Invalid action' };
     }
+  }
+
+  /**
+   * Test store connection before adding
+   */
+  private async testConnection(params: {
+    platform?: 'WOOCOMMERCE' | 'SHOPIFY';
+    storeUrl?: string;
+    consumerKey?: string;
+    consumerSecret?: string;
+    accessToken?: string;
+  }) {
+    if (!params.platform || !params.storeUrl) {
+      return {
+        success: false,
+        error: 'Missing required fields: platform, storeUrl',
+      };
+    }
+
+    if (params.platform === 'WOOCOMMERCE') {
+      if (!params.consumerKey || !params.consumerSecret) {
+        return {
+          success: false,
+          error: 'WooCommerce requires consumerKey and consumerSecret',
+        };
+      }
+
+      const result = await this.wooCommerce.testConnectionWithCredentials(
+        params.storeUrl,
+        params.consumerKey,
+        params.consumerSecret,
+      );
+
+      return {
+        success: result.success,
+        message: result.message,
+        storeInfo: result.storeInfo,
+        platform: 'WOOCOMMERCE',
+      };
+    } else if (params.platform === 'SHOPIFY') {
+      if (!params.accessToken) {
+        return {
+          success: false,
+          error: 'Shopify requires accessToken',
+        };
+      }
+
+      const result = await this.shopify.testConnectionWithDetails(
+        params.storeUrl,
+        params.accessToken,
+      );
+
+      return {
+        success: result.success,
+        message: result.message,
+        storeInfo: result.storeInfo,
+        platform: 'SHOPIFY',
+      };
+    }
+
+    return { success: false, error: 'Invalid platform' };
   }
 
   private async listStores() {

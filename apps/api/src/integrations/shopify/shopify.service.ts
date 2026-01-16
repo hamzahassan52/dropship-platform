@@ -373,4 +373,40 @@ export class ShopifyService {
       return null;
     }
   }
+
+  /**
+   * Test connection with detailed response
+   */
+  async testConnectionWithDetails(
+    storeUrl: string,
+    accessToken: string,
+  ): Promise<{ success: boolean; message: string; storeInfo?: { name: string; domain: string } }> {
+    try {
+      const client = this.createClient(storeUrl, accessToken);
+      const response = await client.get('/shop.json');
+      const shop = response.data.shop;
+
+      return {
+        success: true,
+        message: 'Connection successful',
+        storeInfo: {
+          name: shop?.name || 'Unknown',
+          domain: shop?.domain || storeUrl,
+        },
+      };
+    } catch (error: any) {
+      let message = 'Connection failed';
+      if (error?.response?.status === 401) {
+        message = 'Invalid access token';
+      } else if (error?.response?.status === 404) {
+        message = 'Store not found. Check the URL.';
+      } else if (error?.code === 'ENOTFOUND') {
+        message = 'Store URL not reachable. Check the URL.';
+      } else if (error?.message) {
+        message = error.message;
+      }
+
+      return { success: false, message };
+    }
+  }
 }

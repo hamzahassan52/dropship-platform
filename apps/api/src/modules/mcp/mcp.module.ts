@@ -22,6 +22,11 @@ import { InventoryModule } from '../inventory/inventory.module';
 import { RefundsModule } from '../refunds/refunds.module';
 import { StoresModule } from '../stores/stores.module';
 
+// Integration Services
+import { WooCommerceService } from '../../integrations/woocommerce/woocommerce.service';
+import { ShopifyService } from '../../integrations/shopify/shopify.service';
+import { PrismaService } from '../../common/prisma.service';
+
 @Module({
   imports: [ProductsModule, OrdersModule, InventoryModule, RefundsModule, StoresModule],
   providers: [
@@ -37,6 +42,9 @@ import { StoresModule } from '../stores/stores.module';
     ProcessRefundTool,
     ManageStoreTool,
     AllStoresOrdersTool,
+    WooCommerceService,
+    ShopifyService,
+    PrismaService,
   ],
   controllers: [McpController],
   exports: [McpService],

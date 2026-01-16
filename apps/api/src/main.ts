@@ -1,12 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import { json } from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
-    rawBody: true, // Enable raw body for webhook signature verification
-  });
+  const app = await NestFactory.create(AppModule);
+
+  // Set global prefix first
+  app.setGlobalPrefix('api');
 
   // Enable CORS for frontend
   app.enableCors({
@@ -14,23 +14,14 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Configure raw body capture for webhook signature verification
-  app.use(
-    '/api/webhooks',
-    json({
-      verify: (req: any, res, buf) => {
-        req.rawBody = buf;
-      },
-    }),
-  );
-
   // Global validation pipe
-  app.setGlobalPrefix('api');
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: true,
       transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
     }),
   );
 

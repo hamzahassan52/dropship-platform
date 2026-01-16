@@ -164,6 +164,39 @@ export class OrdersService {
         await this.wooCommerce.updateOrderStatus(wooOrderId, 'processing');
       }
 
+      // Send thank you email to customer
+      const billing = orderPayload.billing || {};
+      const shipping = orderPayload.shipping || {};
+      if (billing.email) {
+        try {
+          const customerName = `${billing.first_name || ''} ${billing.last_name || ''}`.trim() || 'Valued Customer';
+          const shippingAddress = [
+            `${shipping.first_name || billing.first_name || ''} ${shipping.last_name || billing.last_name || ''}`.trim(),
+            shipping.address_1 || billing.address_1,
+            shipping.address_2 || billing.address_2,
+            `${shipping.city || billing.city || ''}, ${shipping.state || billing.state || ''} ${shipping.postcode || billing.postcode || ''}`,
+            shipping.country || billing.country || '',
+          ].filter(Boolean).join('<br>');
+
+          const items = (orderPayload.line_items || []).map((item: any) => ({
+            name: item.name || 'Product',
+            quantity: item.quantity || 1,
+            price: parseFloat(item.price) || 0,
+          }));
+
+          await this.emailService.sendOrderConfirmationEmail(billing.email, {
+            orderNumber: String(orderPayload.id),
+            customerName,
+            items,
+            total: parseFloat(orderPayload.total) || 0,
+            shippingAddress,
+          });
+          this.logger.log(`Thank you email sent to ${billing.email}`);
+        } catch (error) {
+          this.logger.warn(`Failed to send thank you email: ${error}`);
+        }
+      }
+
       this.logger.log(`Order ${wooOrderId} fulfilled successfully (CJ: ${cjResult.cjOrderId})`);
 
       return {

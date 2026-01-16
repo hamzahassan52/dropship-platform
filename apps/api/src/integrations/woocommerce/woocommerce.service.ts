@@ -347,4 +347,60 @@ export class WooCommerceService {
       return false;
     }
   }
+
+  /**
+   * Test connection with custom credentials
+   */
+  async testConnectionWithCredentials(
+    storeUrl: string,
+    consumerKey: string,
+    consumerSecret: string,
+  ): Promise<{ success: boolean; message: string; storeInfo?: { name: string; version: string } }> {
+    try {
+      // Normalize URL
+      let baseUrl = storeUrl.trim().toLowerCase();
+      if (!baseUrl.startsWith('http')) {
+        baseUrl = 'https://' + baseUrl;
+      }
+      baseUrl = baseUrl.replace(/\/$/, '');
+
+      const testClient = axios.create({
+        baseURL: `${baseUrl}/wp-json/wc/v3`,
+        auth: {
+          username: consumerKey,
+          password: consumerSecret,
+        },
+        timeout: 15000,
+      });
+
+      const response = await testClient.get('/system_status');
+      const data = response.data;
+
+      return {
+        success: true,
+        message: 'Connection successful',
+        storeInfo: {
+          name: data?.settings?.store_name || data?.environment?.site_title || 'Unknown',
+          version: data?.environment?.version || 'Unknown',
+        },
+      };
+    } catch (error: any) {
+      let message = 'Connection failed';
+      if (error?.response?.status === 401) {
+        message = 'Invalid API credentials';
+      } else if (error?.response?.status === 404) {
+        message = 'WooCommerce REST API not found. Make sure WooCommerce is installed.';
+      } else if (error?.code === 'ENOTFOUND') {
+        message = 'Store URL not reachable. Check the URL.';
+      } else if (error?.code === 'ECONNREFUSED') {
+        message = 'Connection refused. Check if the store is online.';
+      } else if (error?.code === 'ETIMEDOUT' || error?.code === 'ECONNABORTED') {
+        message = 'Connection timed out. Store may be slow or offline.';
+      } else if (error?.message) {
+        message = error.message;
+      }
+
+      return { success: false, message };
+    }
+  }
 }

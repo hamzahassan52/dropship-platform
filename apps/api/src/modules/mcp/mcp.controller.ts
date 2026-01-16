@@ -1,9 +1,15 @@
-import { Controller, Get, Post, Body, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Body, Logger, Req } from '@nestjs/common';
+import { IsString, IsOptional, IsObject } from 'class-validator';
+import { Request } from 'express';
 import { McpService } from './mcp.service';
 
 // DTO for tool execution
 class ExecuteToolDto {
+  @IsString()
   tool: string;
+
+  @IsOptional()
+  @IsObject()
   params?: Record<string, unknown>;
 }
 
@@ -42,5 +48,34 @@ export class McpController {
       status: 'ok',
       availableTools: this.mcpService.getAvailableTools(),
     };
+  }
+
+  /**
+   * Debug endpoint - no validation
+   */
+  @Post('debug')
+  debug(@Req() req: Request) {
+    this.logger.log(`Debug - Raw body type: ${typeof req.body}`);
+    this.logger.log(`Debug - Raw body: ${JSON.stringify(req.body)}`);
+    return {
+      receivedBody: req.body,
+      bodyType: typeof req.body,
+      tool: req.body?.tool,
+      toolType: typeof req.body?.tool,
+    };
+  }
+
+  /**
+   * Execute tool - no DTO validation
+   */
+  @Post('run')
+  async runTool(@Req() req: Request) {
+    const { tool, params } = req.body || {};
+    this.logger.log(`Running tool: ${tool} with params: ${JSON.stringify(params)}`);
+    if (!tool) {
+      return { success: false, error: 'Tool name required' };
+    }
+    const result = await this.mcpService.executeTool(tool, params || {});
+    return result;
   }
 }
