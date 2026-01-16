@@ -34,10 +34,85 @@ export class OrdersService {
   ) {}
 
   /**
+   * Get all orders (optionally filtered by storeId)
+   */
+  async getOrders(storeId?: string) {
+    const where: any = {};
+    if (storeId) {
+      where.storeId = storeId;
+    }
+
+    return this.prisma.order.findMany({
+      where,
+      include: {
+        store: {
+          select: { name: true, platform: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
    * Get all pending orders from WooCommerce
    */
   async getPendingOrders(): Promise<WooOrder[]> {
     return this.wooCommerce.getPendingOrders();
+  }
+
+  /**
+   * Get failed orders (for retry page)
+   */
+  async getFailedOrders() {
+    const failedStatuses = ['RETRY_1', 'RETRY_2', 'RETRY_3', 'FAILED'];
+
+    const orders = await this.prisma.order.findMany({
+      where: {
+        fulfillmentStatus: { in: failedStatuses as any },
+      },
+      include: {
+        store: {
+          select: { name: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return orders.map(order => ({
+      id: order.id,
+      orderId: order.id,
+      externalOrderId: order.externalOrderId,
+      storeId: order.storeId,
+      storeName: order.store?.name,
+      customerEmail: order.customerEmail,
+      total: order.total,
+      status: order.status,
+      fulfillmentStatus: order.fulfillmentStatus,
+      fulfillmentAttempts: order.fulfillmentAttempts,
+      lastFulfillmentError: order.lastFulfillmentError,
+      nextRetryAt: order.nextRetryAt,
+      createdAt: order.createdAt,
+    }));
+  }
+
+  /**
+   * Bulk fulfill orders
+   */
+  async bulkFulfillOrders(orderIds: string[]): Promise<FulfillmentResult> {
+    const results: OrderSyncResult[] = [];
+
+    for (const orderId of orderIds) {
+      const result = await this.fulfillOrder(orderId);
+      results.push(result);
+      await this.delay(500);
+    }
+
+    return {
+      total: results.length,
+      successful: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success).length,
+      results,
+    };
   }
 
   /**
@@ -79,7 +154,9 @@ export class OrdersService {
   /**
    * Auto-fulfill single order: WooCommerce → CJ
    */
-  async fulfillOrder(wooOrderId: number): Promise<OrderSyncResult> {
+  async fulfillOrder(orderId: string | number): Promise<OrderSyncResult> {
+    const wooOrderId = typeof orderId === 'string' ? parseInt(orderId, 10) : orderId;
+
     try {
       // 1. Get order from WooCommerce
       const wooOrder = await this.wooCommerce.getOrder(wooOrderId);
@@ -663,7 +740,7 @@ export class OrdersService {
     successful: number;
     failed: number;
   }> {
-    const ordersToRetry = await this.orderRetryService.getOrdersForRetry();
+    const ordersToRetry = await this.orderRetryService.getOrdersForRetry() as any[];
 
     if (ordersToRetry.length === 0) {
       return { processed: 0, successful: 0, failed: 0 };
@@ -686,7 +763,7 @@ export class OrdersService {
         const cjOrderData = {
           orderNumber: `WOO-${order.externalOrderId}`,
           shippingAddress: order.shippingAddress as any,
-          items: order.items.map(item => ({
+          items: order.items.map((item: any) => ({
             sku: item.supplierProductId,
             quantity: item.quantity,
             cjProductId: item.supplierProductId,

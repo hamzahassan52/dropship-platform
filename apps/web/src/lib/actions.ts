@@ -87,6 +87,27 @@ export async function toggleStore(storeId: string) {
   return { success: true };
 }
 
+export async function updateStoreSettings(
+  storeId: string,
+  settings: {
+    autoFulfill?: boolean;
+    autoSyncTracking?: boolean;
+    autoSyncInventory?: boolean;
+  }
+) {
+  const res = await fetch(`${API_BASE}/stores/${storeId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ settings }),
+  });
+
+  if (!res.ok) throw new Error('Failed to update settings');
+
+  revalidatePath('/stores');
+  revalidatePath(`/stores/${storeId}`);
+  return { success: true };
+}
+
 // Order Actions
 export async function fulfillOrder(orderId: string) {
   const res = await fetch(`${API_BASE}/orders/fulfill/${orderId}`, {

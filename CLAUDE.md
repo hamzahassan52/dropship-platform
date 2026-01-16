@@ -167,36 +167,40 @@ dropship-platform/
 
 ### Frontend Pages
 
-| Page             | Route          | Features                                                        |
-| ---------------- | -------------- | --------------------------------------------------------------- |
-| **Login**        | `/login`       | Social login buttons, email/password form, forgot password link |
-| **Signup**       | `/signup`      | Social buttons, firstname/lastname/email/password, terms link   |
-| **Dashboard**    | `/`            | Stats cards, revenue chart, recent orders, store overview       |
-| **Stores**       | `/stores`      | Store list, add store button, store cards                       |
-| **Store Detail** | `/stores/[id]` | Store stats, orders, products, settings tabs                    |
-| **Orders**       | `/orders`      | Order list, filters, fulfill buttons                            |
+| Page              | Route             | Features                                                        |
+| ----------------- | ----------------- | --------------------------------------------------------------- |
+| **Login**         | `/login`          | Social login buttons, email/password form, forgot password link |
+| **Signup**        | `/signup`         | Social buttons, firstname/lastname/email/password, terms link   |
+| **Dashboard**     | `/`               | Stats cards, revenue chart, recent orders, store overview       |
+| **Stores**        | `/stores`         | Store list with grid layout, add store modal, sync buttons      |
+| **Store Detail**  | `/stores/[id]`    | Overview, orders, products, settings tabs, webhook status       |
+| **Orders**        | `/orders`         | Order list, filters, fulfill buttons                            |
+| **Failed Orders** | `/orders/failed`  | Retry queue, manual retry, bulk retry, retry schedule info      |
 
 ### UI Components
 
-| Component      | Description                                  |
-| -------------- | -------------------------------------------- |
-| **Sidebar**    | Collapsible with smooth animation, nav links |
-| **ChatWidget** | Floating AI chat bubble, message history     |
-| **StoreCard**  | Store info with platform icon, stats         |
-| **SalesChart** | Revenue visualization                        |
-| **Providers**  | NextAuth SessionProvider wrapper             |
+| Component         | Description                                       |
+| ----------------- | ------------------------------------------------- |
+| **Sidebar**       | Collapsible with smooth animation, nav links      |
+| **ChatWidget**    | Floating AI chat bubble, message history          |
+| **StoreCard**     | Store info with platform icon, stats, sync button |
+| **AddStoreModal** | Step wizard: platform select, credentials, test   |
+| **SyncButton**    | Dropdown with full/orders/products sync options   |
+| **SalesChart**    | Revenue visualization                             |
+| **Providers**     | NextAuth SessionProvider wrapper                  |
 
 ### Backend Modules
 
-| Module        | Endpoints                                           | Description                                 |
-| ------------- | --------------------------------------------------- | ------------------------------------------- |
-| **Auth**      | POST /auth/signup, POST /auth/login, GET /auth/me   | User authentication                         |
-| **Chat**      | POST /chat, GET /chat/history, DELETE /chat/history | AI chat with Groq                           |
-| **Stores**    | GET/POST /stores, DELETE /stores/:id                | Store management                            |
-| **Orders**    | GET /orders, POST /orders/fulfill/:id               | Order processing                            |
-| **Dashboard** | GET /dashboard                                      | Stats overview                              |
-| **Inventory** | POST /inventory/sync                                | Stock synchronization                       |
-| **Scheduler** | (Background)                                        | Auto-fulfill, tracking sync, inventory sync |
+| Module        | Endpoints                                               | Description                                       |
+| ------------- | ------------------------------------------------------- | ------------------------------------------------- |
+| **Auth**      | POST /auth/signup, POST /auth/login, GET /auth/me       | User authentication                               |
+| **Chat**      | POST /chat, GET /chat/history, DELETE /chat/history     | AI chat with Groq                                 |
+| **Stores**    | GET/POST /stores, DELETE /stores/:id, POST sync         | Store management + sync + webhooks                |
+| **Orders**    | GET /orders, POST /orders/fulfill/:id, GET/POST retry   | Order processing + retry system                   |
+| **Webhooks**  | Auto-setup on store add, verify, repair                 | WooCommerce & Shopify webhook management          |
+| **Dashboard** | GET /dashboard                                          | Stats overview                                    |
+| **Inventory** | POST /inventory/sync                                    | Stock synchronization                             |
+| **Scheduler** | (Background)                                            | Auto-fulfill, tracking sync, inventory, retries   |
 
 ### 19 AI Tools (MCP Service)
 
@@ -231,12 +235,45 @@ dropship-platform/
 
 ### Automated Cron Jobs
 
-| Schedule      | Task           | Description                          |
-| ------------- | -------------- | ------------------------------------ |
-| Every Hour    | Auto-fulfill   | Fulfill pending orders automatically |
-| Every 2 Hours | Sync Tracking  | Update tracking numbers from CJ      |
-| Every 6 Hours | Sync Inventory | Update stock levels                  |
-| Daily 9 AM    | Daily Report   | Email summary report                 |
+| Schedule        | Task             | Description                          |
+| --------------- | ---------------- | ------------------------------------ |
+| Every Hour      | Auto-fulfill     | Fulfill pending orders automatically |
+| Every 2 Hours   | Sync Tracking    | Update tracking numbers from CJ      |
+| Every 6 Hours   | Sync Inventory   | Update stock levels                  |
+| Every 5 Minutes | Process Retries  | Retry failed orders queue            |
+| Daily 9 AM      | Daily Report     | Email summary report                 |
+
+### Webhook System (Auto-Created on Store Add)
+
+| Event                      | Platform    | Description                         |
+| -------------------------- | ----------- | ----------------------------------- |
+| `order.created`            | WooCommerce | New order notification              |
+| `order.updated`            | WooCommerce | Order status change                 |
+| `orders/create`            | Shopify     | New order notification              |
+| `orders/updated`           | Shopify     | Order status change                 |
+| `orders/cancelled`         | Shopify     | Order cancellation                  |
+
+### Order Retry System
+
+| Status     | Retry Delay | Description                           |
+| ---------- | ----------- | ------------------------------------- |
+| `RETRY_1`  | 15 minutes  | First retry attempt                   |
+| `RETRY_2`  | 1 hour      | Second retry attempt                  |
+| `RETRY_3`  | 4 hours     | Third retry attempt                   |
+| `FAILED`   | Manual      | Max retries reached, manual only      |
+
+### Store Management Endpoints
+
+| Method | Endpoint                           | Description                 |
+| ------ | ---------------------------------- | --------------------------- |
+| POST   | `/stores/:id/sync`                 | Full sync (orders+products) |
+| POST   | `/stores/:id/sync/orders`          | Sync orders only            |
+| POST   | `/stores/:id/sync/products`        | Sync products only          |
+| GET    | `/stores/:id/webhooks`             | Get webhook status          |
+| POST   | `/stores/:id/webhooks/repair`      | Repair missing webhooks     |
+| GET    | `/orders/failed`                   | Get failed orders           |
+| POST   | `/orders/:id/retry`                | Manual retry failed order   |
+| POST   | `/orders/:id/cancel-retry`         | Cancel retry queue          |
 
 ---
 

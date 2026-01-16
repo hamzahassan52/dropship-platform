@@ -21,6 +21,31 @@ export interface Store {
   isActive: boolean;
   lastSyncAt: string | null;
   createdAt: string;
+  orderCount?: number;
+  productCount?: number;
+  settings?: {
+    autoFulfill?: boolean;
+    autoSyncTracking?: boolean;
+    autoSyncInventory?: boolean;
+  };
+}
+
+export interface Product {
+  id: string;
+  storeId: string;
+  externalProductId: string;
+  name: string;
+  sku?: string;
+  price: number;
+  stock: number;
+  imageUrl?: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface WebhookStatus {
+  active: string[];
+  missing: string[];
 }
 
 export interface StoreStats {
@@ -170,4 +195,81 @@ export async function getOrderStats() {
   } catch {
     return mockOrderStats;
   }
+}
+
+// Store Orders
+export async function getStoreOrders(storeId: string): Promise<Order[]> {
+  try {
+    const res = await fetch(`${API_BASE}/orders?storeId=${storeId}`, {
+      next: { revalidate: 30 },
+    });
+    if (!res.ok) throw new Error('Failed to fetch store orders');
+    return res.json();
+  } catch {
+    return [];
+  }
+}
+
+// Store Products
+export async function getStoreProducts(storeId: string): Promise<Product[]> {
+  try {
+    const res = await fetch(`${API_BASE}/stores/${storeId}/products`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) throw new Error('Failed to fetch store products');
+    return res.json();
+  } catch {
+    return [];
+  }
+}
+
+// Webhook Status
+export async function getWebhookStatus(storeId: string): Promise<WebhookStatus> {
+  try {
+    const res = await fetch(`${API_BASE}/stores/${storeId}/webhooks`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) throw new Error('Failed to fetch webhook status');
+    return res.json();
+  } catch {
+    return { active: [], missing: [] };
+  }
+}
+
+// Sync Store (client-side)
+export async function syncStore(storeId: string, type: 'full' | 'orders' | 'products' = 'full') {
+  const endpoint = type === 'full'
+    ? `${API_BASE}/stores/${storeId}/sync`
+    : `${API_BASE}/stores/${storeId}/sync/${type}`;
+
+  const res = await fetch(endpoint, { method: 'POST' });
+  if (!res.ok) throw new Error('Sync failed');
+  return res.json();
+}
+
+// Repair Webhooks
+export async function repairWebhooks(storeId: string) {
+  const res = await fetch(`${API_BASE}/stores/${storeId}/webhooks/repair`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to repair webhooks');
+  return res.json();
+}
+
+// Failed Orders
+export async function getFailedOrders(): Promise<Order[]> {
+  try {
+    const res = await fetch(`${API_BASE}/orders/failed`, {
+      next: { revalidate: 30 },
+    });
+    if (!res.ok) throw new Error('Failed to fetch failed orders');
+    return res.json();
+  } catch {
+    return [];
+  }
+}
+
+// Retry Order
+export async function retryOrder(orderId: string) {
+  const res = await fetch(`${API_BASE}/orders/${orderId}/retry`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to retry order');
+  return res.json();
 }
