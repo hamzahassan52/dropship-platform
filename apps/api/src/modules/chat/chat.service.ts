@@ -133,35 +133,26 @@ export class ChatService implements OnModuleInit {
   // System prompt for the AI assistant
   private readonly systemPrompt = `You are a helpful AI assistant for a dropshipping automation platform. You help users manage their e-commerce stores (WooCommerce & Shopify), fulfill orders, track inventory, and analyze profits.
 
-IMPORTANT INSTRUCTIONS:
-1. When calling tools, use EXACT parameter names and types as specified
-2. Numbers must be actual numbers (10 not "10")
-3. Arrays must be actual arrays (["id1", "id2"] not "id1, id2")
-4. Only use tools when the user explicitly requests an action
-5. For simple greetings or questions, respond conversationally without tools
+CRITICAL FUNCTION CALLING RULES:
+- DO NOT write function calls as text or XML tags
+- DO NOT use formats like <function=name> or function_name(args)
+- The system will automatically detect when you need to call a function
+- Just describe what you want to do and the system handles function calling
+- If you need data, simply state what information you need
 
-Available tools:
-- search_products: Search CJ Dropshipping catalog
-- get_pending_orders: Get orders needing fulfillment
-- fulfill_orders: Send orders to supplier
-- get_business_stats: Get revenue/profit statistics
-- sync_tracking: Update tracking numbers
-- import_product: Import product to store
-- sync_inventory: Sync stock levels
-- calculate_profit: Calculate order profit
-- process_refund: Handle refunds
-- manage_store: List/add/remove stores (action: 'list', 'add', 'remove', 'test')
-- get_all_stores_orders: Get orders from all stores
-- get_products: List products from store
-- update_product_price: Update pricing
-- get_customers: Get customer list
-- send_notification: Send email
-- create_coupon: Generate discount codes
-- get_shipping_rates: Get CJ shipping rates
-- bulk_import_products: Import multiple products
-- analytics_report: Generate reports
+WHEN TO USE TOOLS:
+- User asks about orders → system may call get_pending_orders or get_all_stores_orders
+- User asks about stats/revenue/profit → system may call get_business_stats
+- User asks about stores → system may call manage_store with action='list'
+- User asks to search products → system may call search_products
 
-Respond naturally in the user's language. If they speak Roman Urdu, respond in Roman Urdu. Be concise and helpful.`;
+RESPONSE STYLE:
+- Be concise and helpful
+- Respond in the user's language (Roman Urdu if they use it)
+- Present data clearly when received from tools
+- Don't ask for confirmation before using tools - just use them when needed
+
+Available capabilities: search products, view orders, check stats, manage stores, sync tracking, import products, sync inventory, calculate profit, process refunds, send notifications, create coupons, get shipping rates, generate reports.`;
 
   constructor(
     private readonly configService: ConfigService,
@@ -245,8 +236,8 @@ Respond naturally in the user's language. If they speak Roman Urdu, respond in R
         { role: 'user', content: sanitizedMessage },
       ];
 
-      // Get tool definitions
-      const tools = this.getToolDefinitions();
+      // Get relevant tool definitions based on user message
+      const tools = this.getRelevantTools(sanitizedMessage);
 
       // Call Groq API with retry logic
       let response = await this.callGroqWithRetry(messages, tools);
@@ -375,14 +366,28 @@ Respond naturally in the user's language. If they speak Roman Urdu, respond in R
           const errorJson = JSON.parse(errorText);
           if (errorJson.error?.code === 'tool_use_failed') {
             // Tool validation failed - retry without tools
-            this.logger.warn('Tool validation failed, retrying without tools');
-            return this.chatWithGroq(messages, []);
+            this.logger.warn(`Tool validation failed: ${errorJson.error.message?.substring(0, 100)}`);
+
+            // Add a hint to the messages to not use XML-style function calls
+            const updatedMessages = [...messages];
+            const lastUserMsg = updatedMessages.findIndex(m => m.role === 'user');
+            if (lastUserMsg !== -1) {
+              updatedMessages.splice(lastUserMsg, 0, {
+                role: 'system',
+                content: 'Note: Respond conversationally. The function calling system will handle any tool usage automatically.',
+              });
+            }
+
+            return this.chatWithGroq(updatedMessages, []);
           }
           if (response.status === 429) {
             throw new Error('RATE_LIMITED');
           }
         } catch (parseError) {
-          // Ignore parse errors
+          if (parseError instanceof Error && parseError.message === 'RATE_LIMITED') {
+            throw parseError;
+          }
+          // Ignore other parse errors
         }
 
         throw new Error(`Groq API error: ${response.status}`);
@@ -1424,6 +1429,105 @@ Respond naturally in the user's language. If they speak Roman Urdu, respond in R
     return {
       reply: customMessage || defaultMessage,
     };
+  }
+
+  // ============================================================================
+  // SMART TOOL SELECTION
+  // ============================================================================
+
+  private getRelevantTools(message: string): ToolDefinition[] {
+    const lowerMessage = message.toLowerCase();
+    const allTools = this.getToolDefinitions();
+
+    // Keywords for each tool category
+    const toolKeywords: Record<string, string[]> = {
+      // Orders related
+      'get_pending_orders': ['pending', 'order', 'orders', 'fulfill', 'unfulfilled', 'awaiting'],
+      'get_all_stores_orders': ['all orders', 'orders', 'order status', 'kitne order', 'total order', 'failed', 'shipped', 'delivered'],
+      'fulfill_orders': ['fulfill', 'ship', 'send order', 'process order'],
+
+      // Stats related
+      'get_business_stats': ['stats', 'statistics', 'revenue', 'profit', 'earning', 'income', 'money', 'sales', 'kitna', 'kmai', 'kamai', 'paisa'],
+      'analytics_report': ['report', 'analytics', 'analysis', 'trend', 'performance'],
+
+      // Store related
+      'manage_store': ['store', 'stores', 'shop', 'dukan', 'my store', 'list store', 'show store'],
+
+      // Products related
+      'search_products': ['search', 'find product', 'look for', 'dhundo', 'product search', 'cj product'],
+      'get_products': ['products', 'my products', 'store products', 'inventory', 'stock'],
+      'import_product': ['import', 'add product', 'import product'],
+      'bulk_import_products': ['bulk', 'multiple products', 'import all'],
+      'update_product_price': ['price', 'update price', 'change price', 'pricing'],
+
+      // Tracking & Inventory
+      'sync_tracking': ['tracking', 'track', 'shipment', 'delivery status'],
+      'sync_inventory': ['inventory', 'stock', 'sync stock', 'update stock'],
+
+      // Customers
+      'get_customers': ['customer', 'customers', 'buyer', 'grahak'],
+
+      // Financial
+      'calculate_profit': ['profit margin', 'margin', 'calculate profit'],
+      'process_refund': ['refund', 'cancel', 'return', 'wapas'],
+
+      // Communication
+      'send_notification': ['email', 'notify', 'send', 'message'],
+      'create_coupon': ['coupon', 'discount', 'code', 'promo'],
+
+      // Shipping
+      'get_shipping_rates': ['shipping', 'delivery', 'shipping rate', 'delivery cost'],
+    };
+
+    // Find matching tools
+    const matchedTools = new Set<string>();
+
+    for (const [toolName, keywords] of Object.entries(toolKeywords)) {
+      for (const keyword of keywords) {
+        if (lowerMessage.includes(keyword)) {
+          matchedTools.add(toolName);
+          break;
+        }
+      }
+    }
+
+    // If no specific tools matched, check for general queries
+    if (matchedTools.size === 0) {
+      // Check if it's a greeting or general question - no tools needed
+      const greetings = ['hello', 'hi', 'hey', 'salam', 'assalam', 'kya hal', 'how are', 'thanks', 'thank', 'shukriya', 'ok', 'okay', 'theek'];
+      const isGreeting = greetings.some(g => lowerMessage.includes(g));
+
+      if (isGreeting) {
+        return []; // No tools for greetings
+      }
+
+      // For ambiguous queries, provide basic tools
+      matchedTools.add('get_business_stats');
+      matchedTools.add('manage_store');
+      matchedTools.add('get_all_stores_orders');
+    }
+
+    // Always add closely related tools
+    if (matchedTools.has('get_pending_orders') || matchedTools.has('get_all_stores_orders')) {
+      matchedTools.add('get_pending_orders');
+      matchedTools.add('get_all_stores_orders');
+    }
+
+    if (matchedTools.has('get_business_stats') || matchedTools.has('analytics_report')) {
+      matchedTools.add('get_business_stats');
+    }
+
+    // Filter and return only matched tools (max 5 to reduce confusion)
+    const selectedTools = allTools.filter(tool =>
+      matchedTools.has(tool.function.name)
+    );
+
+    // Limit to 5 most relevant tools
+    const limitedTools = selectedTools.slice(0, 5);
+
+    this.logger.debug(`Selected ${limitedTools.length} tools for message: "${message.substring(0, 50)}..."`);
+
+    return limitedTools;
   }
 
   private getDefaultResponse(): string {
