@@ -85,7 +85,7 @@ export class GetCustomersTool {
         search: params.search,
         email: params.email,
         orderby: params.orderBy || 'registered_date',
-        order: params.order || 'desc',
+        order: (params.order || 'desc') as 'asc' | 'desc',
         per_page: limit,
       });
 

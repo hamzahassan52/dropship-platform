@@ -73,8 +73,8 @@ export class BulkImportProductsTool {
 
       // If search query provided, get products from CJ
       if (params.searchQuery && productIds.length === 0) {
-        const searchResults = await this.cjService.searchProducts(params.searchQuery, limit);
-        productIds = searchResults.map((p: any) => p.pid || p.productId);
+        const searchResults = await this.cjService.searchProducts({ query: params.searchQuery, limit });
+        productIds = searchResults.slice(0, limit).map((p: any) => p.pid || p.productId || p.id);
       }
 
       // If category provided, get products from that category
@@ -108,21 +108,21 @@ export class BulkImportProductsTool {
           }
 
           // Calculate selling price
-          const costPrice = parseFloat(cjProduct.sellPrice || cjProduct.price || '0');
+          const cj = cjProduct as any;
+          const costPrice = parseFloat(cj.sellPrice || cj.price || '0');
           const sellingPrice = (costPrice * priceMultiplier).toFixed(2);
 
           // Create product in WooCommerce
           const wooProduct = await this.wooCommerce.createProduct({
-            name: cjProduct.productNameEn || cjProduct.name,
+            name: cj.productNameEn || cj.name,
             type: 'simple',
-            status,
             regular_price: sellingPrice,
-            description: cjProduct.description || '',
-            short_description: cjProduct.productNameEn || '',
+            description: cj.description || '',
+            short_description: cj.productNameEn || '',
             sku: `CJ-${cjProductId}`,
             manage_stock: true,
             stock_quantity: 100,
-            images: cjProduct.productImage ? [{ src: cjProduct.productImage }] : [],
+            images: cj.productImage ? [{ src: cj.productImage }] : [],
             meta_data: [
               { key: '_cj_product_id', value: cjProductId },
               { key: '_supplier_price', value: String(costPrice) },
@@ -130,7 +130,7 @@ export class BulkImportProductsTool {
           });
 
           // Save product mapping
-          if (params.storeId) {
+          if (params.storeId && wooProduct) {
             await this.prisma.productMapping.create({
               data: {
                 storeId: params.storeId,
@@ -147,8 +147,8 @@ export class BulkImportProductsTool {
           results.push({
             cjProductId,
             success: true,
-            wooProductId: wooProduct.id,
-            name: cjProduct.productNameEn || cjProduct.name,
+            wooProductId: wooProduct?.id,
+            name: cj.productNameEn || cj.name,
           });
 
           // Small delay to avoid rate limiting

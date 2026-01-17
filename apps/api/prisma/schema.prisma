@@ -14,13 +14,13 @@ model User {
   plan         UserPlan       @default(FREE)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
-  name         String?
   avatar       String?
+  firstName    String         @default("")
   isVerified   Boolean        @default(false)
   lastLoginAt  DateTime?
-  password     String
-  firstName    String         @default("")
   lastName     String         @default("")
+  name         String?
+  password     String
   chatMessages ChatMessage[]
   orders       Order[]
   products     StoreProduct[]
@@ -54,11 +54,13 @@ model Store {
   lastSyncAt      DateTime?
   settings        Json?
   webhookSecret   String?
+  autoFulfill     Boolean          @default(true)
+  webhookStatus   String           @default("inactive")
   orders          Order[]
-  products        StoreProduct[]
   productMappings ProductMapping[]
-  webhookLogs     WebhookLog[]
+  products        StoreProduct[]
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  webhookLogs     WebhookLog[]
 
   @@map("stores")
 }
@@ -107,35 +109,32 @@ model Product {
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  userId          String
-  storeId         String
-  customerEmail   String
-  shippingAddress Json
-  subtotal        Float
-  shippingCost    Float
-  total           Float
-  profit          Float
-  status          OrderStatus @default(PENDING)
-  supplierOrderId String?
-  trackingNumber  String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  carrier         String?
-  customerName    String?
-  externalOrderId String?
-  notes           String?
-
-  // Fulfillment retry fields
-  fulfillmentStatus    FulfillmentStatus @default(PENDING)
+  id                   String            @id @default(cuid())
+  userId               String
+  storeId              String
+  customerEmail        String
+  shippingAddress      Json
+  subtotal             Float
+  shippingCost         Float
+  total                Float
+  profit               Float
+  status               OrderStatus       @default(PENDING)
+  supplierOrderId      String?
+  trackingNumber       String?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  carrier              String?
+  customerName         String?
+  externalOrderId      String?
+  notes                String?
   fulfillmentAttempts  Int               @default(0)
+  fulfillmentStatus    FulfillmentStatus @default(PENDING)
   lastFulfillmentError String?
   nextRetryAt          DateTime?
-
-  items           OrderItem[]
-  failedOrder     FailedOrder?
-  store           Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  failedOrder          FailedOrder?
+  items                OrderItem[]
+  store                Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([storeId, externalOrderId])
   @@index([fulfillmentStatus, nextRetryAt])
@@ -174,7 +173,6 @@ model Supplier {
   @@map("suppliers")
 }
 
-// Product mapping for SKU to CJ Product ID mapping
 model ProductMapping {
   id            String   @id @default(cuid())
   storeId       String
@@ -195,7 +193,6 @@ model ProductMapping {
   @@map("product_mappings")
 }
 
-// Webhook event logging for audit trail
 model WebhookLog {
   id         String   @id @default(cuid())
   storeId    String
@@ -209,6 +206,20 @@ model WebhookLog {
 
   @@index([storeId, createdAt])
   @@map("webhook_logs")
+}
+
+model FailedOrder {
+  id          String    @id @default(cuid())
+  orderId     String    @unique
+  attempts    Int       @default(0)
+  lastError   String
+  nextRetryAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([nextRetryAt])
+  @@map("failed_orders")
 }
 
 enum UserPlan {
@@ -244,19 +255,4 @@ enum FulfillmentStatus {
   FULFILLED
   FAILED
   CANCELLED
-}
-
-// Track failed orders for retry management
-model FailedOrder {
-  id          String    @id @default(cuid())
-  orderId     String    @unique
-  attempts    Int       @default(0)
-  lastError   String
-  nextRetryAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  @@index([nextRetryAt])
-  @@map("failed_orders")
 }

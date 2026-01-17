@@ -11,7 +11,7 @@ import { WooCommerceService } from '../../integrations/woocommerce/woocommerce.s
 import { ShopifyService } from '../../integrations/shopify/shopify.service';
 
 @Module({
-  imports: [forwardRef(() => OrdersModule), StoresModule],
+  imports: [forwardRef(() => OrdersModule), forwardRef(() => StoresModule)],
   controllers: [WebhooksController],
   providers: [
     WebhooksService,

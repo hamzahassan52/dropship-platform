@@ -6,7 +6,7 @@ import { McpService } from './mcp.service';
 // DTO for tool execution
 class ExecuteToolDto {
   @IsString()
-  tool: string;
+  tool!: string;
 
   @IsOptional()
   @IsObject()
