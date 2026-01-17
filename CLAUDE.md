@@ -12,7 +12,7 @@
 | **Frontend**        | Next.js 14 (App Router, Server Components)         |
 | **Auth (Backend)**  | JWT (Passport.js + bcryptjs)                       |
 | **Auth (Frontend)** | NextAuth.js (Google, Apple, Facebook, Credentials) |
-| **AI**              | Groq (llama-3.3-70b-versatile - FREE & FAST)       |
+| **AI**              | Groq (llama-3.3-70b-versatile - FREE, FAST, Tool Calling) |
 | **Integrations**    | WooCommerce, Shopify, CJ Dropshipping              |
 | **Scheduler**       | @nestjs/schedule (Cron Jobs)                       |
 | **Email**           | Nodemailer (Professional HTML Templates)           |
@@ -777,8 +777,9 @@ DATABASE_URL="postgresql://user:password@localhost:5432/dropship"
 # JWT
 JWT_SECRET=your-super-secret-jwt-key
 
-# Groq AI (FREE & FAST)
+# Groq AI (FREE & FAST - with Tool Calling)
 GROQ_API_KEY=your-groq-api-key
+GROQ_MODEL=llama-3.3-70b-versatile
 
 # CJ Dropshipping
 CJ_EMAIL=your-cj-email

@@ -103,7 +103,12 @@ export class McpService implements OnModuleInit {
     ];
   }
 
-  async executeTool(toolName: string, params: Record<string, unknown>) {
+  async executeTool(toolName: string, params: Record<string, unknown>, userId?: string) {
+    // userId can be used for authorization in future
+    // For now, it's logged for audit purposes
+    if (userId) {
+      console.log(`[MCP] User ${userId} executing tool: ${toolName}`);
+    }
     switch (toolName) {
       case 'search_products':
         return this.searchProductsTool.execute(params);
