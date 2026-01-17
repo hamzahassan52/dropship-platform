@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Ollama } from 'ollama';
 import { PrismaService } from '../../common/prisma.service';
 import { McpService } from '../mcp/mcp.service';
 
@@ -20,9 +19,40 @@ interface ToolCall {
   };
 }
 
+interface GroqResponse {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: Array<{
+    index: number;
+    finish_reason: string;
+    message: {
+      role: string;
+      content: string;
+      tool_calls?: Array<{
+        id: string;
+        type: string;
+        function: {
+          name: string;
+          arguments: string;
+        };
+      }>;
+    };
+  }>;
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
 @Injectable()
 export class ChatService {
-  private ollama: Ollama | null = null;
+  private groqApiKey: string;
+  private groqApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+  private modelName = 'llama-3.3-70b-versatile'; // Groq's fast Llama model
+
   private systemPrompt = `You are an AI assistant for a dropshipping automation platform. You help users manage their e-commerce stores (WooCommerce & Shopify), fulfill orders, track inventory, and analyze profits.
 
 Available actions you can perform:
@@ -44,27 +74,13 @@ If the user speaks in Roman Urdu (like "orders dikhao"), respond in Roman Urdu t
     private readonly prisma: PrismaService,
     private readonly mcpService: McpService,
   ) {
-    // Initialize Ollama
-    const ollamaUrl = this.configService.get<string>('OLLAMA_URL', 'http://localhost:11434');
-    try {
-      this.ollama = new Ollama({ host: ollamaUrl });
-      // Check if Ollama is available
-      this.checkOllamaConnection();
-      console.log('[ChatService] Using Ollama for chat');
-    } catch (error: any) {
-      console.log('[ChatService] Ollama not available:', error?.message);
-    }
-  }
+    // Initialize Groq API
+    this.groqApiKey = this.configService.get<string>('GROQ_API_KEY', '');
 
-  private async checkOllamaConnection() {
-    try {
-      if (this.ollama) {
-        await this.ollama.list();
-        console.log('[ChatService] Ollama is available');
-      }
-    } catch (error: any) {
-      console.log('[ChatService] Ollama is not running. Start it with: ollama serve');
-      this.ollama = null;
+    if (this.groqApiKey) {
+      console.log('[ChatService] Groq API configured successfully');
+    } else {
+      console.log('[ChatService] Warning: GROQ_API_KEY not set in environment');
     }
   }
 
@@ -75,9 +91,9 @@ If the user speaks in Roman Urdu (like "orders dikhao"), respond in Roman Urdu t
     // Save user message
     await this.saveMessage(userId, 'user', message);
 
-    // Check if Ollama is available
-    if (!this.ollama) {
-      const reply = 'AI service not configured. Please install Ollama (https://ollama.com) and start it with: ollama serve';
+    // Check if Groq API is configured
+    if (!this.groqApiKey) {
+      const reply = 'AI service not configured. Please set GROQ_API_KEY in environment variables.';
       await this.saveMessage(userId, 'assistant', reply);
       return { reply };
     }
@@ -96,8 +112,8 @@ If the user speaks in Roman Urdu (like "orders dikhao"), respond in Roman Urdu t
       let assistantMessage: any;
       let toolResults: unknown[] = [];
 
-      // Use Ollama
-      assistantMessage = await this.chatWithOllama(messages, tools);
+      // Use Groq API
+      assistantMessage = await this.chatWithGroq(messages, tools);
 
       // Check if LLM wants to call tools
       if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
@@ -125,7 +141,7 @@ If the user speaks in Roman Urdu (like "orders dikhao"), respond in Roman Urdu t
 
         // Get final response from LLM with tool results
         let finalResponse: any;
-        finalResponse = await this.chatWithOllama(messages, []);
+        finalResponse = await this.chatWithGroq(messages, []);
 
         const reply = finalResponse.content || 'Done!';
         await this.saveMessage(userId, 'assistant', reply, toolResults);
@@ -145,47 +161,81 @@ If the user speaks in Roman Urdu (like "orders dikhao"), respond in Roman Urdu t
     }
   }
 
-  private async chatWithOllama(messages: ChatMessage[], tools: any[]) {
-    if (!this.ollama) {
-      throw new Error('Ollama not configured');
+  private async chatWithGroq(messages: ChatMessage[], tools: any[]): Promise<{ content: string; tool_calls?: ToolCall[] }> {
+    // Convert messages to Groq/OpenAI format
+    const groqMessages = messages.map(m => {
+      if (m.role === 'tool') {
+        return {
+          role: 'tool',
+          content: m.content,
+          tool_call_id: m.tool_call_id,
+        };
+      }
+      if (m.role === 'assistant' && m.tool_calls) {
+        return {
+          role: 'assistant',
+          content: m.content || null,
+          tool_calls: m.tool_calls,
+        };
+      }
+      return {
+        role: m.role,
+        content: m.content,
+      };
+    });
+
+    // Build request body
+    const requestBody: any = {
+      model: this.modelName,
+      messages: groqMessages,
+      temperature: 0.7,
+      max_tokens: 1024,
+    };
+
+    // Add tools if provided
+    if (tools && tools.length > 0) {
+      requestBody.tools = tools;
+      requestBody.tool_choice = 'auto';
     }
 
-    // Convert messages to Ollama format
-    const ollamaMessages = messages.map(m => ({
-      role: m.role,
-      content: m.content,
-    }));
-
-    // Pull model if not available (using llama3.2)
-    const modelName = 'llama3.2';
-    
     try {
-      // Check if model exists
-      const models = await this.ollama.list();
-      const modelExists = models.models.some(m => m.name.includes(modelName));
-      
-      if (!modelExists) {
-        console.log(`[ChatService] Pulling ${modelName} model...`);
-        await this.ollama.pull({ model: modelName });
-      }
-
-      // Generate response
-      const response = await this.ollama.chat({
-        model: modelName,
-        messages: ollamaMessages,
-        stream: false,
-        options: {
-          temperature: 0.7,
-          num_predict: 1024,
+      const response = await fetch(this.groqApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.groqApiKey}`,
         },
+        body: JSON.stringify(requestBody),
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[ChatService] Groq API error:', response.status, errorText);
+        throw new Error(`Groq API error: ${response.status} - ${errorText}`);
+      }
+
+      const data: GroqResponse = await response.json();
+
+      if (!data.choices || data.choices.length === 0) {
+        throw new Error('No response from Groq API');
+      }
+
+      const choice = data.choices[0];
+      console.log('[ChatService] Groq response received, tokens used:', data.usage?.total_tokens);
+
       return {
-        content: response.message.content,
-        tool_calls: [], // Ollama doesn't support tool calls directly yet
+        content: choice.message.content || '',
+        tool_calls: choice.message.tool_calls?.map(tc => ({
+          id: tc.id,
+          type: 'function' as const,
+          function: {
+            name: tc.function.name,
+            arguments: tc.function.arguments,
+          },
+        })),
       };
     } catch (error) {
-      console.error('[ChatService] Ollama error:', error);
+      console.error('[ChatService] Groq API error:', error);
       throw error;
     }
   }

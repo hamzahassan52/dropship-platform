@@ -12,7 +12,7 @@
 | **Frontend**        | Next.js 14 (App Router, Server Components)         |
 | **Auth (Backend)**  | JWT (Passport.js + bcryptjs)                       |
 | **Auth (Frontend)** | NextAuth.js (Google, Apple, Facebook, Credentials) |
-| **AI**              | Ollama (llama3.2 - LOCAL & FREE)                   |
+| **AI**              | Groq (llama-3.3-70b-versatile - FREE & FAST)       |
 | **Integrations**    | WooCommerce, Shopify, CJ Dropshipping              |
 | **Scheduler**       | @nestjs/schedule (Cron Jobs)                       |
 | **Email**           | Nodemailer (Professional HTML Templates)           |
@@ -84,8 +84,8 @@
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                          EXTERNAL SERVICES                                   │
 │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐            │
-│  │ PostgreSQL │  │   Ollama   │  │   SMTP     │  │ Store APIs │            │
-│  │  Database  │  │llama3.2    │  │   Email    │  │ WC/Shopify │            │
+│  │ PostgreSQL │  │   Groq     │  │   SMTP     │  │ Store APIs │            │
+│  │  Database  │  │ Llama 3.3  │  │   Email    │  │ WC/Shopify │            │
 │  └────────────┘  └────────────┘  └────────────┘  └────────────┘            │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -148,6 +148,104 @@
 
 ---
 
+## Order Journey Flow (Immediate Fulfillment)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    IMMEDIATE ORDER FULFILLMENT FLOW                          │
+│                                                                              │
+│  ⚡ Orders are processed IMMEDIATELY via webhook - NO cron job wait!        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+PHASE 1: Customer Places Order
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Customer → WooCommerce/Shopify Store → Order #1001 ($24.99)                │
+│  Order Status: 'processing' (payment received)                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+PHASE 2: Webhook Triggers Backend (IMMEDIATE)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  WooCommerce/Shopify sends webhook to:                                      │
+│  POST /api/webhooks/woocommerce/:storeId                                    │
+│                                                                              │
+│  Backend Actions (SYNCHRONOUS - NO DELAY):                                  │
+│  ├─ WebhooksService.handleOrderCreated()                                    │
+│  ├─ Validates order status === 'processing'                                 │
+│  ├─ Creates Order in database (status: PENDING)                             │
+│  └─ Sends "Order Received" email to customer                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+PHASE 3: IMMEDIATE CJ Fulfillment (NO CRON WAIT!)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ⚡ OrdersService.fulfillOrderFromWebhook() - Called IMMEDIATELY            │
+│                                                                              │
+│  ├─ Prepares CJ order data from webhook payload                             │
+│  ├─ Calls cjDropshipping.placeOrder() → TURANT CJ ko order bhejta hai      │
+│  │                                                                          │
+│  ├─ SUCCESS PATH:                                                           │
+│  │   ├─ Order status: PROCESSING                                            │
+│  │   ├─ Supplier Order ID: CJ123456                                         │
+│  │   ├─ Sends "Thank You" email to customer                                 │
+│  │   └─ Updates WooCommerce order status                                    │
+│  │                                                                          │
+│  └─ FAILURE PATH:                                                           │
+│      ├─ Saves order with fulfillmentStatus: PENDING                         │
+│      ├─ Schedules automatic retry (15 min → 1 hr → 4 hrs)                   │
+│      └─ Cron job (every 5 min) will retry failed orders                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+PHASE 4: CJ Confirms Order
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  CJ Dropshipping processes and confirms order                               │
+│  ├─ Order Status: FULFILLED                                                 │
+│  └─ Supplier Order ID: CJ123456                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+PHASE 5: Tracking Sync (Every 2 Hours - Cron)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Scheduler: syncTrackingNumbers() runs every 2 hours                        │
+│  ├─ Gets tracking from CJ: TRACK789                                         │
+│  ├─ Updates Order status: SHIPPED                                           │
+│  ├─ Sends "Order Shipped" email with tracking link                          │
+│  └─ Updates WooCommerce/Shopify order with tracking                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+PHASE 6: Delivery Complete
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Customer receives product                                                  │
+│  ├─ Order Status: DELIVERED                                                 │
+│  ├─ Profit calculated: $22.99 (92% margin)                                  │
+│  └─ Sends "Order Delivered" email                                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Code References
+
+| Phase | File | Function | Line |
+|-------|------|----------|------|
+| 2 | `webhooks.service.ts` | `handleOrderCreated()` | 81-134 |
+| 3 | `orders.service.ts` | `fulfillOrderFromWebhook()` | 195-302 |
+| 3 | `cj-dropshipping.service.ts` | `placeOrder()` | 116-173 |
+| 3 (fail) | `orders.service.ts` | `saveFailedOrderForRetry()` | 680-733 |
+| 5 | `scheduler.service.ts` | `syncTrackingNumbers()` | 52-81 |
+
+### Important Notes
+
+1. **IMMEDIATE Processing**: Orders are processed the moment webhook is received - NO hourly cron wait
+2. **Cron Jobs are BACKUP only**:
+   - Every 5 min: Retries failed orders
+   - Every hour: Catches any missed webhook orders (backup)
+   - Every 2 hours: Syncs tracking numbers
+3. **Status Check**: Only orders with status `'processing'` (paid) are auto-fulfilled
+4. **Retry System**: If immediate fulfillment fails, automatic retry kicks in (15min → 1hr → 4hrs)
+
+---
+
 ## Project Structure
 
 ```
@@ -162,7 +260,7 @@ dropship-platform/
 │   │   │   │   │   ├── jwt.strategy.ts
 │   │   │   │   │   ├── jwt-auth.guard.ts
 │   │   │   │   │   └── get-user.decorator.ts
-│   │   │   │   ├── chat/                 # AI Chat with Ollama
+│   │   │   │   ├── chat/                 # AI Chat with Groq
 │   │   │   │   │   ├── chat.controller.ts
 │   │   │   │   │   └── chat.service.ts
 │   │   │   │   ├── mcp/                  # 19 Automation Tools
@@ -679,6 +777,9 @@ DATABASE_URL="postgresql://user:password@localhost:5432/dropship"
 # JWT
 JWT_SECRET=your-super-secret-jwt-key
 
+# Groq AI (FREE & FAST)
+GROQ_API_KEY=your-groq-api-key
+
 # CJ Dropshipping
 CJ_EMAIL=your-cj-email
 CJ_PASSWORD=your-cj-password
@@ -724,7 +825,7 @@ APPLE_SECRET=your-apple-secret
 
 | Phase | Component                | Status | Details                                |
 | ----- | ------------------------ | ------ | -------------------------------------- |
-| 1     | System Status            | PASS   | Backend, Frontend, PostgreSQL, Ollama  |
+| 1     | System Status            | PASS   | Backend, Frontend, PostgreSQL, Groq    |
 | 2     | Authentication           | PASS   | Signup, Login, JWT, /me endpoint       |
 | 3     | Dashboard & Stores       | PASS   | Stats, Store list, Details, Sync       |
 | 4     | Order Journey            | PASS   | Simulation, Fulfillment, Tracking      |
@@ -837,7 +938,7 @@ curl -X POST http://localhost:4000/api/mcp/run \
 
 ## Notes
 
-- **AI Chat**: Uses local Ollama with llama3.2 - responds in Roman Urdu
+- **AI Chat**: Uses Groq (llama-3.3-70b-versatile) - FREE, FAST, responds in Roman Urdu
 - **Simulation Mode**: `CJ_SIMULATION_MODE=true` for testing without payment
 - **Multi-tenant**: Each user's data is isolated
 - **Webhooks**: Auto-created when store is added
@@ -859,7 +960,7 @@ curl -X POST http://localhost:4000/api/mcp/run \
 
 ### January 16, 2026 - Core Platform
 - 19 MCP tools implemented
-- AI Chat with Ollama integration
+- AI Chat with Groq integration (llama-3.3-70b)
 - Professional email templates
 - WooCommerce & Shopify integrations
 - Order automation with CJ Dropshipping
