@@ -6,10 +6,16 @@
     "build": "rm -rf dist && rm -f *.tsbuildinfo && tsc -p tsconfig.build.json",
     "dev": "ts-node-dev --respawn --transpile-only --watch src src/main.ts",
     "start": "nest start",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/main.js",
     "start:dev": "nest start --watch",
     "test": "jest",
-    "lint": "eslint \"{src,test}/**/*.ts\""
+    "lint": "eslint \"{src,test}/**/*.ts\"",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:start:prod": "pm2 start ecosystem.config.js --env production",
+    "pm2:stop": "pm2 stop dropship-api",
+    "pm2:restart": "pm2 restart dropship-api",
+    "pm2:logs": "pm2 logs dropship-api",
+    "pm2:status": "pm2 status"
   },
   "dependencies": {
     "@dropship/types": "workspace:*",

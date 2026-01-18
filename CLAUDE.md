@@ -6,17 +6,17 @@
 
 ## Tech Stack
 
-| Layer               | Technology                                         |
-| ------------------- | -------------------------------------------------- |
-| **Backend**         | NestJS + TypeScript + Prisma + PostgreSQL          |
-| **Frontend**        | Next.js 14 (App Router, Server Components)         |
-| **Auth (Backend)**  | JWT (Passport.js + bcryptjs)                       |
-| **Auth (Frontend)** | NextAuth.js (Google, Apple, Facebook, Credentials) |
+| Layer               | Technology                                                |
+| ------------------- | --------------------------------------------------------- |
+| **Backend**         | NestJS + TypeScript + Prisma + PostgreSQL                 |
+| **Frontend**        | Next.js 14 (App Router, Server Components)                |
+| **Auth (Backend)**  | JWT (Passport.js + bcryptjs)                              |
+| **Auth (Frontend)** | NextAuth.js (Google, Apple, Facebook, Credentials)        |
 | **AI**              | Groq (llama-3.3-70b-versatile - FREE, FAST, Tool Calling) |
-| **Integrations**    | WooCommerce, Shopify, CJ Dropshipping              |
-| **Scheduler**       | @nestjs/schedule (Cron Jobs)                       |
-| **Email**           | Nodemailer (Professional HTML Templates)           |
-| **Monorepo**        | Turborepo + pnpm                                   |
+| **Integrations**    | WooCommerce, Shopify, CJ Dropshipping                     |
+| **Scheduler**       | @nestjs/schedule (Cron Jobs)                              |
+| **Email**           | Nodemailer (Professional HTML Templates)                  |
+| **Monorepo**        | Turborepo + pnpm                                          |
 
 ---
 
@@ -226,13 +226,13 @@ PHASE 6: Delivery Complete
 
 ### Key Code References
 
-| Phase | File | Function | Line |
-|-------|------|----------|------|
-| 2 | `webhooks.service.ts` | `handleOrderCreated()` | 81-134 |
-| 3 | `orders.service.ts` | `fulfillOrderFromWebhook()` | 195-302 |
-| 3 | `cj-dropshipping.service.ts` | `placeOrder()` | 116-173 |
-| 3 (fail) | `orders.service.ts` | `saveFailedOrderForRetry()` | 680-733 |
-| 5 | `scheduler.service.ts` | `syncTrackingNumbers()` | 52-81 |
+| Phase    | File                         | Function                    | Line    |
+| -------- | ---------------------------- | --------------------------- | ------- |
+| 2        | `webhooks.service.ts`        | `handleOrderCreated()`      | 81-134  |
+| 3        | `orders.service.ts`          | `fulfillOrderFromWebhook()` | 195-302 |
+| 3        | `cj-dropshipping.service.ts` | `placeOrder()`              | 116-173 |
+| 3 (fail) | `orders.service.ts`          | `saveFailedOrderForRetry()` | 680-733 |
+| 5        | `scheduler.service.ts`       | `syncTrackingNumbers()`     | 52-81   |
 
 ### Important Notes
 
@@ -388,94 +388,100 @@ dropship-platform/
 
 ### Frontend Pages
 
-| Page              | Route              | Features                                          |
-| ----------------- | ------------------ | ------------------------------------------------- |
-| **Login**         | `/login`           | Social login, email/password, forgot password     |
-| **Signup**        | `/signup`          | Social buttons, form validation, terms link       |
-| **Dashboard**     | `/`                | Stats cards, revenue chart, recent orders         |
-| **Stores**        | `/stores`          | Store grid, add modal, sync buttons, status       |
-| **Store Detail**  | `/stores/[id]`     | 4 tabs: Overview, Orders, Products, Settings      |
-| **Orders**        | `/orders`          | Order list, filters, fulfill buttons              |
-| **Failed Orders** | `/orders/failed`   | Retry queue, manual/bulk retry, schedule info     |
+| Page              | Route            | Features                                      |
+| ----------------- | ---------------- | --------------------------------------------- |
+| **Login**         | `/login`         | Social login, email/password, forgot password |
+| **Signup**        | `/signup`        | Social buttons, form validation, terms link   |
+| **Dashboard**     | `/`              | Stats cards, revenue chart, recent orders     |
+| **Stores**        | `/stores`        | Store grid, add modal, sync buttons, status   |
+| **Store Detail**  | `/stores/[id]`   | 4 tabs: Overview, Orders, Products, Settings  |
+| **Orders**        | `/orders`        | Order list, filters, fulfill buttons          |
+| **Failed Orders** | `/orders/failed` | Retry queue, manual/bulk retry, schedule info |
 
 ### UI Components
 
-| Component         | Description                                       |
-| ----------------- | ------------------------------------------------- |
-| **Sidebar**       | Collapsible with smooth animation, nav links      |
-| **ChatWidget**    | Floating AI chat bubble (Roman Urdu support)      |
-| **StoreCard**     | Platform icon, status badge, stats, sync button   |
-| **AddStoreModal** | Step wizard: platform → credentials → test        |
-| **SyncButton**    | Dropdown: Full/Orders/Products sync               |
-| **OverviewTab**   | Store stats, charts, recent activity              |
-| **OrdersTab**     | Orders table, bulk actions, filters               |
-| **ProductsTab**   | Products grid, import from CJ                     |
-| **SettingsTab**   | Credentials, auto settings, webhook repair        |
+| Component         | Description                                     |
+| ----------------- | ----------------------------------------------- |
+| **Sidebar**       | Collapsible with smooth animation, nav links    |
+| **ChatWidget**    | Floating AI chat bubble (Roman Urdu support)    |
+| **StoreCard**     | Platform icon, status badge, stats, sync button |
+| **AddStoreModal** | Step wizard: platform → credentials → test      |
+| **SyncButton**    | Dropdown: Full/Orders/Products sync             |
+| **OverviewTab**   | Store stats, charts, recent activity            |
+| **OrdersTab**     | Orders table, bulk actions, filters             |
+| **ProductsTab**   | Products grid, import from CJ                   |
+| **SettingsTab**   | Credentials, auto settings, webhook repair      |
 
 ### Backend API Endpoints
 
 #### Auth Module
-| Method | Endpoint          | Description              |
-| ------ | ----------------- | ------------------------ |
-| POST   | `/api/auth/signup`| Create new user          |
-| POST   | `/api/auth/login` | Login, get JWT token     |
-| POST   | `/api/auth/social`| OAuth login              |
-| GET    | `/api/auth/me`    | Get current user         |
+
+| Method | Endpoint           | Description          |
+| ------ | ------------------ | -------------------- |
+| POST   | `/api/auth/signup` | Create new user      |
+| POST   | `/api/auth/login`  | Login, get JWT token |
+| POST   | `/api/auth/social` | OAuth login          |
+| GET    | `/api/auth/me`     | Get current user     |
 
 #### Stores Module
-| Method | Endpoint                            | Description                |
-| ------ | ----------------------------------- | -------------------------- |
-| GET    | `/api/stores`                       | List all stores            |
-| POST   | `/api/stores`                       | Add new store              |
-| GET    | `/api/stores/:id`                   | Get store details          |
-| PUT    | `/api/stores/:id`                   | Update store               |
-| DELETE | `/api/stores/:id`                   | Remove store               |
-| POST   | `/api/stores/:id/toggle`            | Toggle active status       |
-| GET    | `/api/stores/:id/stats`             | Get store statistics       |
-| POST   | `/api/stores/test-connection`       | Test credentials           |
-| POST   | `/api/stores/:id/sync`              | Full sync                  |
-| POST   | `/api/stores/:id/sync/orders`       | Sync orders only           |
-| POST   | `/api/stores/:id/sync/products`     | Sync products only         |
-| GET    | `/api/stores/:id/webhooks`          | Get webhook status         |
-| POST   | `/api/stores/:id/webhooks/repair`   | Repair webhooks            |
+
+| Method | Endpoint                          | Description          |
+| ------ | --------------------------------- | -------------------- |
+| GET    | `/api/stores`                     | List all stores      |
+| POST   | `/api/stores`                     | Add new store        |
+| GET    | `/api/stores/:id`                 | Get store details    |
+| PUT    | `/api/stores/:id`                 | Update store         |
+| DELETE | `/api/stores/:id`                 | Remove store         |
+| POST   | `/api/stores/:id/toggle`          | Toggle active status |
+| GET    | `/api/stores/:id/stats`           | Get store statistics |
+| POST   | `/api/stores/test-connection`     | Test credentials     |
+| POST   | `/api/stores/:id/sync`            | Full sync            |
+| POST   | `/api/stores/:id/sync/orders`     | Sync orders only     |
+| POST   | `/api/stores/:id/sync/products`   | Sync products only   |
+| GET    | `/api/stores/:id/webhooks`        | Get webhook status   |
+| POST   | `/api/stores/:id/webhooks/repair` | Repair webhooks      |
 
 #### Orders Module
-| Method | Endpoint                           | Description                |
-| ------ | ---------------------------------- | -------------------------- |
-| GET    | `/api/orders`                      | List all orders            |
-| GET    | `/api/orders/pending`              | Get pending orders         |
-| GET    | `/api/orders/failed`               | Get failed orders          |
-| GET    | `/api/orders/stats`                | Order statistics           |
-| POST   | `/api/orders/fulfill/:orderId`     | Fulfill single order       |
-| POST   | `/api/orders/fulfill/bulk`         | Bulk fulfill orders        |
-| POST   | `/api/orders/fulfill-all`          | Fulfill all pending        |
-| POST   | `/api/orders/:orderId/retry`       | Manual retry failed order  |
-| POST   | `/api/orders/:orderId/cancel-retry`| Cancel retry queue         |
-| POST   | `/api/orders/sync-tracking`        | Sync tracking numbers      |
-| GET    | `/api/orders/report/daily`         | Daily report data          |
+
+| Method | Endpoint                            | Description               |
+| ------ | ----------------------------------- | ------------------------- |
+| GET    | `/api/orders`                       | List all orders           |
+| GET    | `/api/orders/pending`               | Get pending orders        |
+| GET    | `/api/orders/failed`                | Get failed orders         |
+| GET    | `/api/orders/stats`                 | Order statistics          |
+| POST   | `/api/orders/fulfill/:orderId`      | Fulfill single order      |
+| POST   | `/api/orders/fulfill/bulk`          | Bulk fulfill orders       |
+| POST   | `/api/orders/fulfill-all`           | Fulfill all pending       |
+| POST   | `/api/orders/:orderId/retry`        | Manual retry failed order |
+| POST   | `/api/orders/:orderId/cancel-retry` | Cancel retry queue        |
+| POST   | `/api/orders/sync-tracking`         | Sync tracking numbers     |
+| GET    | `/api/orders/report/daily`          | Daily report data         |
 
 #### Webhooks Module
-| Method | Endpoint                                   | Description            |
-| ------ | ------------------------------------------ | ---------------------- |
-| POST   | `/api/webhooks/woocommerce/:storeId`       | WooCommerce webhook    |
-| POST   | `/api/webhooks/shopify/:storeId`           | Shopify webhook        |
-| POST   | `/api/webhooks/test/:storeId`              | Test webhook           |
+
+| Method | Endpoint                             | Description         |
+| ------ | ------------------------------------ | ------------------- |
+| POST   | `/api/webhooks/woocommerce/:storeId` | WooCommerce webhook |
+| POST   | `/api/webhooks/shopify/:storeId`     | Shopify webhook     |
+| POST   | `/api/webhooks/test/:storeId`        | Test webhook        |
 
 #### MCP Module
-| Method | Endpoint            | Description              |
-| ------ | ------------------- | ------------------------ |
-| GET    | `/api/mcp/tools`    | List all 19 tools        |
-| POST   | `/api/mcp/run`      | Execute a tool           |
-| POST   | `/api/mcp/execute`  | Execute (with DTO)       |
-| GET    | `/api/mcp/health`   | MCP health check         |
+
+| Method | Endpoint           | Description        |
+| ------ | ------------------ | ------------------ |
+| GET    | `/api/mcp/tools`   | List all 19 tools  |
+| POST   | `/api/mcp/run`     | Execute a tool     |
+| POST   | `/api/mcp/execute` | Execute (with DTO) |
+| GET    | `/api/mcp/health`  | MCP health check   |
 
 #### Chat Module
-| Method | Endpoint                | Description              |
-| ------ | ----------------------- | ------------------------ |
-| POST   | `/api/chat`             | Send message to AI       |
-| GET    | `/api/chat/history`     | Get chat history         |
-| DELETE | `/api/chat/history`     | Clear chat history       |
-| POST   | `/api/chat/test`        | Test chat (no auth)      |
+
+| Method | Endpoint            | Description         |
+| ------ | ------------------- | ------------------- |
+| POST   | `/api/chat`         | Send message to AI  |
+| GET    | `/api/chat/history` | Get chat history    |
+| DELETE | `/api/chat/history` | Clear chat history  |
+| POST   | `/api/chat/test`    | Test chat (no auth) |
 
 ---
 
@@ -531,38 +537,39 @@ dropship-platform/
 
 **Key Features:**
 
-| Feature                  | Implementation                                      |
-| ------------------------ | --------------------------------------------------- |
-| **Rate Limiting**        | 30 requests/minute per user                         |
-| **Retry Logic**          | 3 retries with exponential backoff                  |
-| **Timeout**              | 25s API timeout, 20s tool execution timeout         |
-| **Tool Name Cleaning**   | Strips malformed names (`name={args}` → `name`)     |
-| **Type Coercion**        | Converts `"10"` (string) → `10` (number)            |
-| **Smart Tool Selection** | Selects 1-5 relevant tools based on message         |
-| **Bilingual Responses**  | Roman Urdu + English with emojis                    |
-| **Contextual Errors**    | Specific error messages for each failure type       |
-| **Debug Logging**        | Comprehensive logs for empty data debugging         |
+| Feature                  | Implementation                                  |
+| ------------------------ | ----------------------------------------------- |
+| **Rate Limiting**        | 30 requests/minute per user                     |
+| **Retry Logic**          | 3 retries with exponential backoff              |
+| **Timeout**              | 25s API timeout, 20s tool execution timeout     |
+| **Tool Name Cleaning**   | Strips malformed names (`name={args}` → `name`) |
+| **Type Coercion**        | Converts `"10"` (string) → `10` (number)        |
+| **Smart Tool Selection** | Selects 1-5 relevant tools based on message     |
+| **Bilingual Responses**  | Roman Urdu + English with emojis                |
+| **Contextual Errors**    | Specific error messages for each failure type   |
+| **Debug Logging**        | Comprehensive logs for empty data debugging     |
 
 **Smart Tool Selection Keywords:**
 
-| Query Type              | Tools Selected                                      |
-| ----------------------- | --------------------------------------------------- |
-| "overview", "summary"   | `get_business_stats`, `manage_store`, `get_all_stores_orders` |
-| "orders", "pending"     | `get_pending_orders`, `get_all_stores_orders`       |
-| "stats", "revenue"      | `get_business_stats`                                |
-| "store", "dukan"        | `manage_store`                                      |
-| "products", "search"    | `search_products`, `get_products`                   |
+| Query Type            | Tools Selected                                                |
+| --------------------- | ------------------------------------------------------------- |
+| "overview", "summary" | `get_business_stats`, `manage_store`, `get_all_stores_orders` |
+| "orders", "pending"   | `get_pending_orders`, `get_all_stores_orders`                 |
+| "stats", "revenue"    | `get_business_stats`                                          |
+| "store", "dukan"      | `manage_store`                                                |
+| "products", "search"  | `search_products`, `get_products`                             |
 
 ---
 
 #### Dashboard Module
-| Method | Endpoint                      | Description              |
-| ------ | ----------------------------- | ------------------------ |
-| GET    | `/api/dashboard`              | Overview stats           |
-| GET    | `/api/dashboard/recent-orders`| Recent orders            |
-| GET    | `/api/dashboard/sales-chart`  | Sales chart data         |
-| GET    | `/api/dashboard/top-products` | Top selling products     |
-| GET    | `/api/dashboard/alerts`       | System alerts            |
+
+| Method | Endpoint                       | Description          |
+| ------ | ------------------------------ | -------------------- |
+| GET    | `/api/dashboard`               | Overview stats       |
+| GET    | `/api/dashboard/recent-orders` | Recent orders        |
+| GET    | `/api/dashboard/sales-chart`   | Sales chart data     |
+| GET    | `/api/dashboard/top-products`  | Top selling products |
+| GET    | `/api/dashboard/alerts`        | System alerts        |
 
 ---
 
@@ -570,71 +577,71 @@ dropship-platform/
 
 **Core Automation Tools:**
 
-| #   | Tool                    | Description                              |
-| --- | ----------------------- | ---------------------------------------- |
-| 1   | `search_products`       | Search CJ Dropshipping catalog           |
-| 2   | `get_pending_orders`    | Get orders needing fulfillment           |
-| 3   | `fulfill_orders`        | Send orders to supplier                  |
-| 4   | `get_business_stats`    | Revenue, profit, order stats             |
-| 5   | `sync_tracking`         | Sync tracking from supplier              |
-| 6   | `import_product`        | Import product to store                  |
-| 7   | `sync_inventory`        | Sync stock levels                        |
-| 8   | `calculate_profit`      | Calculate profit margin                  |
-| 9   | `process_refund`        | Handle refund/cancellation               |
-| 10  | `manage_store`          | Add/remove/list/test stores              |
-| 11  | `get_all_stores_orders` | Orders across all stores                 |
+| #   | Tool                    | Description                    |
+| --- | ----------------------- | ------------------------------ |
+| 1   | `search_products`       | Search CJ Dropshipping catalog |
+| 2   | `get_pending_orders`    | Get orders needing fulfillment |
+| 3   | `fulfill_orders`        | Send orders to supplier        |
+| 4   | `get_business_stats`    | Revenue, profit, order stats   |
+| 5   | `sync_tracking`         | Sync tracking from supplier    |
+| 6   | `import_product`        | Import product to store        |
+| 7   | `sync_inventory`        | Sync stock levels              |
+| 8   | `calculate_profit`      | Calculate profit margin        |
+| 9   | `process_refund`        | Handle refund/cancellation     |
+| 10  | `manage_store`          | Add/remove/list/test stores    |
+| 11  | `get_all_stores_orders` | Orders across all stores       |
 
 **Store Management Tools:**
 
-| #   | Tool                    | Description                              |
-| --- | ----------------------- | ---------------------------------------- |
-| 12  | `get_products`          | List products with filters               |
-| 13  | `update_product_price`  | Update regular/sale price                |
-| 14  | `get_customers`         | Customer list, top buyers                |
-| 15  | `send_notification`     | Send email notifications                 |
-| 16  | `create_coupon`         | Create discount codes                    |
-| 17  | `get_shipping_rates`    | CJ shipping rates by country             |
-| 18  | `bulk_import_products`  | Import multiple products from CJ         |
-| 19  | `analytics_report`      | Sales, profit, trends reports            |
+| #   | Tool                   | Description                      |
+| --- | ---------------------- | -------------------------------- |
+| 12  | `get_products`         | List products with filters       |
+| 13  | `update_product_price` | Update regular/sale price        |
+| 14  | `get_customers`        | Customer list, top buyers        |
+| 15  | `send_notification`    | Send email notifications         |
+| 16  | `create_coupon`        | Create discount codes            |
+| 17  | `get_shipping_rates`   | CJ shipping rates by country     |
+| 18  | `bulk_import_products` | Import multiple products from CJ |
+| 19  | `analytics_report`     | Sales, profit, trends reports    |
 
 ---
 
 ### Automated Cron Jobs
 
-| Schedule                      | Task             | Description                       |
-| ----------------------------- | ---------------- | --------------------------------- |
-| `0 * * * *` (Every hour)      | Auto-Fulfill     | Fulfill pending orders            |
-| `0 */2 * * *` (Every 2 hours) | Sync Tracking    | Update tracking from CJ           |
-| `0 */6 * * *` (Every 6 hours) | Sync Inventory   | Update stock levels               |
-| `*/5 * * * *` (Every 5 min)   | Process Retries  | Retry failed orders               |
-| `0 9 * * *` (Daily 9 AM)      | Daily Report     | Email summary                     |
+| Schedule                      | Task            | Description             |
+| ----------------------------- | --------------- | ----------------------- |
+| `0 * * * *` (Every hour)      | Auto-Fulfill    | Fulfill pending orders  |
+| `0 */2 * * *` (Every 2 hours) | Sync Tracking   | Update tracking from CJ |
+| `0 */6 * * *` (Every 6 hours) | Sync Inventory  | Update stock levels     |
+| `*/5 * * * *` (Every 5 min)   | Process Retries | Retry failed orders     |
+| `0 9 * * *` (Daily 9 AM)      | Daily Report    | Email summary           |
 
 ---
 
 ### Order Retry System
 
-| Status     | Retry Delay | Description                    |
-| ---------- | ----------- | ------------------------------ |
-| `PENDING`  | -           | Initial state                  |
-| `PROCESSING` | -         | Being fulfilled                |
-| `RETRY_1`  | 15 minutes  | First retry attempt            |
-| `RETRY_2`  | 1 hour      | Second retry attempt           |
-| `RETRY_3`  | 4 hours     | Third retry attempt            |
-| `FAILED`   | Manual only | Max retries reached            |
-| `FULFILLED`| -           | Successfully fulfilled         |
-| `SHIPPED`  | -           | Tracking received              |
+| Status       | Retry Delay | Description            |
+| ------------ | ----------- | ---------------------- |
+| `PENDING`    | -           | Initial state          |
+| `PROCESSING` | -           | Being fulfilled        |
+| `RETRY_1`    | 15 minutes  | First retry attempt    |
+| `RETRY_2`    | 1 hour      | Second retry attempt   |
+| `RETRY_3`    | 4 hours     | Third retry attempt    |
+| `FAILED`     | Manual only | Max retries reached    |
+| `FULFILLED`  | -           | Successfully fulfilled |
+| `SHIPPED`    | -           | Tracking received      |
 
 ---
 
 ### Webhook System (Auto-Created)
 
-| Event             | Platform    | Description            |
-| ----------------- | ----------- | ---------------------- |
-| `order.created`   | WooCommerce | New order notification |
-| `order.updated`   | WooCommerce | Order status change    |
-| `orders/create`   | Shopify     | New order notification |
-| `orders/updated`  | Shopify     | Order status change    |
-| `orders/cancelled`| Shopify     | Order cancellation     |
+| Event              | Platform    | Description            |
+| ------------------ | ----------- | ---------------------- |
+| `order.created`    | WooCommerce | New order notification |
+| `order.updated`    | WooCommerce | Order status change    |
+| `orders/create`    | Shopify     | New order notification |
+| `orders/updated`   | Shopify     | Order status change    |
+| `orders/cancelled` | Shopify     | Order cancellation     |
 
 ---
 
@@ -821,8 +828,8 @@ pnpm dev:web
 # Start only backend (port 4000)
 pnpm dev:api
 
-# Build backend
-cd apps/api && npx tsc
+# Build backend for production
+cd apps/api && npm run build
 
 # Run backend (production)
 cd apps/api && node dist/main.js
@@ -902,58 +909,59 @@ APPLE_SECRET=your-apple-secret
 
 ### Comprehensive E2E Test - All Phases Passed
 
-| Phase | Component                | Status | Details                                |
-| ----- | ------------------------ | ------ | -------------------------------------- |
-| 1     | System Status            | PASS   | Backend, Frontend, PostgreSQL, Groq    |
-| 2     | Authentication           | PASS   | Signup, Login, JWT, /me endpoint       |
-| 3     | Dashboard & Stores       | PASS   | Stats, Store list, Details, Sync       |
-| 4     | Order Journey            | PASS   | Simulation, Fulfillment, Tracking      |
-| 5     | Retry System             | PASS   | Failed orders, Retry, Cancel retry     |
-| 6     | AI Chat & MCP            | PASS   | 19 tools available, Roman Urdu chat    |
-| 7     | Email System             | PASS   | Notifications, Daily reports           |
-| 8     | Cron Jobs                | PASS   | All scheduled tasks running            |
+| Phase | Component          | Status | Details                             |
+| ----- | ------------------ | ------ | ----------------------------------- |
+| 1     | System Status      | PASS   | Backend, Frontend, PostgreSQL, Groq |
+| 2     | Authentication     | PASS   | Signup, Login, JWT, /me endpoint    |
+| 3     | Dashboard & Stores | PASS   | Stats, Store list, Details, Sync    |
+| 4     | Order Journey      | PASS   | Simulation, Fulfillment, Tracking   |
+| 5     | Retry System       | PASS   | Failed orders, Retry, Cancel retry  |
+| 6     | AI Chat & MCP      | PASS   | 19 tools available, Roman Urdu chat |
+| 7     | Email System       | PASS   | Notifications, Daily reports        |
+| 8     | Cron Jobs          | PASS   | All scheduled tasks running         |
 
 ### API Endpoints Tested
 
-| Endpoint                        | Method | Result |
-| ------------------------------- | ------ | ------ |
-| `/api/auth/signup`              | POST   | PASS   |
-| `/api/auth/login`               | POST   | PASS   |
-| `/api/auth/me`                  | GET    | PASS   |
-| `/api/dashboard`                | GET    | PASS   |
-| `/api/stores`                   | GET    | PASS   |
-| `/api/stores/:id`               | GET    | PASS   |
-| `/api/stores/:id/stats`         | GET    | PASS   |
-| `/api/stores/:id/sync/orders`   | POST   | PASS   |
-| `/api/orders`                   | GET    | PASS   |
-| `/api/orders/pending`           | GET    | PASS   |
-| `/api/orders/failed`            | GET    | PASS   |
-| `/api/orders/:id/retry`         | POST   | PASS   |
-| `/api/orders/:id/cancel-retry`  | POST   | PASS   |
-| `/api/orders/report/daily`      | GET    | PASS   |
-| `/api/mcp/tools`                | GET    | PASS   |
-| `/api/mcp/run`                  | POST   | PASS   |
-| `/api/chat`                     | POST   | PASS   |
-| `/api/test/status`              | GET    | PASS   |
-| `/api/test/order/simulate`      | POST   | PASS   |
-| `/api/test/sync/tracking`       | POST   | PASS   |
+| Endpoint                       | Method | Result |
+| ------------------------------ | ------ | ------ |
+| `/api/auth/signup`             | POST   | PASS   |
+| `/api/auth/login`              | POST   | PASS   |
+| `/api/auth/me`                 | GET    | PASS   |
+| `/api/dashboard`               | GET    | PASS   |
+| `/api/stores`                  | GET    | PASS   |
+| `/api/stores/:id`              | GET    | PASS   |
+| `/api/stores/:id/stats`        | GET    | PASS   |
+| `/api/stores/:id/sync/orders`  | POST   | PASS   |
+| `/api/orders`                  | GET    | PASS   |
+| `/api/orders/pending`          | GET    | PASS   |
+| `/api/orders/failed`           | GET    | PASS   |
+| `/api/orders/:id/retry`        | POST   | PASS   |
+| `/api/orders/:id/cancel-retry` | POST   | PASS   |
+| `/api/orders/report/daily`     | GET    | PASS   |
+| `/api/mcp/tools`               | GET    | PASS   |
+| `/api/mcp/run`                 | POST   | PASS   |
+| `/api/chat`                    | POST   | PASS   |
+| `/api/test/status`             | GET    | PASS   |
+| `/api/test/order/simulate`     | POST   | PASS   |
+| `/api/test/sync/tracking`      | POST   | PASS   |
 
 ### MCP Tools Tested
 
-| Tool                  | Status | Output Sample                          |
-| --------------------- | ------ | -------------------------------------- |
-| `get_business_stats`  | PASS   | Revenue: $249.98, Profit: $229.98      |
-| `manage_store`        | PASS   | 1 store (Welding Jacket)               |
-| `get_all_stores_orders` | PASS | 2 orders, both SHIPPED                 |
-| `search_products`     | PASS   | Empty (CJ simulation mode)             |
-| `analytics_report`    | PASS   | Overview report with 92% margin        |
-| `send_notification`   | PASS   | Email sent successfully                |
+| Tool                    | Status | Output Sample                     |
+| ----------------------- | ------ | --------------------------------- |
+| `get_business_stats`    | PASS   | Revenue: $249.98, Profit: $229.98 |
+| `manage_store`          | PASS   | 1 store (Welding Jacket)          |
+| `get_all_stores_orders` | PASS   | 2 orders, both SHIPPED            |
+| `search_products`       | PASS   | Empty (CJ simulation mode)        |
+| `analytics_report`      | PASS   | Overview report with 92% margin   |
+| `send_notification`     | PASS   | Email sent successfully           |
 
 ---
 
 ## Quick Start Guide
 
 ### 1. Clone and Install
+
 ```bash
 git clone <repo>
 cd dropship-platform
@@ -961,6 +969,7 @@ pnpm install
 ```
 
 ### 2. Setup Database
+
 ```bash
 cd apps/api
 # Create .env with DATABASE_URL
@@ -969,6 +978,7 @@ npx prisma generate
 ```
 
 ### 3. Configure Environment
+
 ```bash
 # Copy example env files
 cp apps/api/.env.example apps/api/.env
@@ -977,6 +987,7 @@ cp apps/web/.env.example apps/web/.env.local
 ```
 
 ### 4. Start Development
+
 ```bash
 # Terminal 1: Backend
 cd apps/api && pnpm dev
@@ -989,6 +1000,7 @@ cd apps/api && npx prisma studio
 ```
 
 ### 5. Test the System
+
 ```bash
 # Check system status
 curl http://localhost:4000/api/test/status
@@ -1028,7 +1040,25 @@ curl -X POST http://localhost:4000/api/mcp/run \
 
 ## Changelog
 
+### January 18, 2026 - E2E Testing System & Build Fixes
+
+- **Complete E2E Order Journey Test**: 9-phase automated testing system
+  - Phase 1: Authentication & Store Setup
+  - Phase 2: Order Creation via Webhook
+  - Phase 3: CJ Fulfillment (Simulated)
+  - Phase 4: Tracking Sync
+  - Phase 5: Delivery Confirmation
+  - Phase 6: Dashboard Verification
+  - Phase 7: Retry System Testing
+  - Phase 8: AI Chat Integration
+  - Phase 9: Cleanup
+- **Build Command Fixed**: Changed from `nest build` to `tsc -p tsconfig.build.json`
+- **Added `tsconfig.build.json`**: Proper TypeScript build configuration
+- **ChatWidget Improvements**: Multi-line input with auto-expand, proper line breaks
+- **Test Results**: 45/45 tests passing (100%)
+
 ### January 18, 2026 - Production-Ready AI Chat Service
+
 - **Malformed Tool Name Handling**: Added `cleanToolCallName()` to fix Groq sending names like `get_orders={"status":"PENDING"}` → `get_orders`
 - **Comprehensive Debug Logging**: Added detailed logging in `executeToolSafe()` for debugging empty data issues
 - **Stronger System Prompt**: Updated prompt with explicit "NEVER DO THIS" examples to stop AI writing `<function=name>` syntax
@@ -1043,6 +1073,7 @@ curl -X POST http://localhost:4000/api/mcp/run \
 - **Retry Logic**: 3 automatic retries with exponential backoff
 
 ### January 17, 2026 - Store Management System
+
 - Added automatic webhook setup on store creation
 - Implemented order retry system (RETRY_1, RETRY_2, RETRY_3, FAILED)
 - Created Store Detail page with 4 tabs (Overview, Orders, Products, Settings)
@@ -1052,9 +1083,111 @@ curl -X POST http://localhost:4000/api/mcp/run \
 - Completed comprehensive E2E testing
 
 ### January 16, 2026 - Core Platform
+
 - 19 MCP tools implemented
 - AI Chat with Groq integration (llama-3.3-70b)
 - Professional email templates
 - WooCommerce & Shopify integrations
 - Order automation with CJ Dropshipping
 - Cron jobs for auto-processing
+
+About PM2
+
+PM2 is NOT currently used in your project - I just mentioned it as a suggestion for production deployment.
+
+What is PM2?
+
+PM2 is a production process manager for Node.js applications. It helps:
+┌─────────────────┬────────────────────────────────────────────┐
+│ Feature │ Description │
+├─────────────────┼────────────────────────────────────────────┤
+│ Auto-restart │ Restarts your app if it crashes │
+├─────────────────┼────────────────────────────────────────────┤
+│ Cluster mode │ Runs multiple instances for load balancing │
+├─────────────────┼────────────────────────────────────────────┤
+│ Log management │ Collects and rotates logs │
+├─────────────────┼────────────────────────────────────────────┤
+│ Monitoring │ CPU/Memory usage dashboard │
+├─────────────────┼────────────────────────────────────────────┤
+│ Startup scripts │ Auto-start on server reboot │
+└─────────────────┴────────────────────────────────────────────┘
+Without PM2 (Current)
+
+node dist/main.js
+
+# If it crashes, you need to restart manually
+
+# If server reboots, app doesn't auto-start
+
+With PM2 (Optional for Production)
+
+# Install PM2 globally
+
+npm install -g pm2
+
+# Start your app
+
+pm2 start dist/main.js --name dropship-api
+
+# Useful commands
+
+pm2 list # See all running apps
+pm2 logs # View logs
+pm2 restart all # Restart apps
+pm2 save # Save current process list
+pm2 startup # Generate startup script
+
+Do You Need PM2?
+
+- Development: No, use npm run dev
+- Production (VPS/Server): Yes, highly recommended
+- Production (Docker/Cloud): Usually handled by the platform (AWS ECS, Railway, etc.)
+
+⏺ PM2 configuration added. Here's a summary:
+
+Files Created/Modified
+┌──────────────────────────────┬────────────────────────┐
+│ File │ Description │
+├──────────────────────────────┼────────────────────────┤
+│ apps/api/ecosystem.config.js │ PM2 configuration file │
+├──────────────────────────────┼────────────────────────┤
+│ apps/api/logs/ │ Directory for PM2 logs │
+├──────────────────────────────┼────────────────────────┤
+│ apps/api/.gitignore │ Added logs/ │
+├──────────────────────────────┼────────────────────────┤
+│ apps/api/package.json │ Added PM2 scripts │
+└──────────────────────────────┴────────────────────────┘
+Available Commands
+
+# Development (no PM2)
+
+npm run dev
+
+# Production (without PM2)
+
+npm run build
+npm run start:prod
+
+# Production (with PM2) - optional
+
+npm run pm2:start # Start with PM2
+npm run pm2:start:prod # Start in production mode
+npm run pm2:stop # Stop the app
+npm run pm2:restart # Restart the app
+npm run pm2:logs # View logs
+npm run pm2:status # Check status
+
+To Use PM2 (When Needed)
+
+# Install PM2 globally (one time)
+
+npm install -g pm2
+
+# Then use the npm scripts
+
+npm run build
+npm run pm2:start:prod
+
+# Or run directly
+
+pm2 start ecosystem.config.js --env production
