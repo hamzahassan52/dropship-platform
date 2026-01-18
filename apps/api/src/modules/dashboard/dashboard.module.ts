@@ -13,5 +13,6 @@ import { CjDropshippingService } from '../../integrations/cj-dropshipping/cj-dro
     WooCommerceService,
     CjDropshippingService,
   ],
+  exports: [DashboardService],
 })
 export class DashboardModule {}

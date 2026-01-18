@@ -6,6 +6,7 @@ import { StoresService } from '../stores/stores.service';
 import { WooCommerceService } from '../../integrations/woocommerce/woocommerce.service';
 import { CjDropshippingService } from '../../integrations/cj-dropshipping/cj-dropshipping.service';
 import { PrismaService } from '../../common/prisma.service';
+import { E2EOrderJourneyService } from './e2e-order-journey.service';
 
 @Controller('test')
 export class TestController {
@@ -19,6 +20,7 @@ export class TestController {
     private cjService: CjDropshippingService,
     private configService: ConfigService,
     private prisma: PrismaService,
+    private e2eOrderJourney: E2EOrderJourneyService,
   ) {}
 
   /**
@@ -397,6 +399,121 @@ export class TestController {
         orders: deletedOrders.count,
         webhookLogs: deletedLogs.count,
       },
+    };
+  }
+
+  // ============================================================================
+  // COMPLETE E2E ORDER JOURNEY TEST
+  // ============================================================================
+
+  /**
+   * Run complete E2E order journey test
+   *
+   * This endpoint simulates the ENTIRE order lifecycle:
+   * 1. Create test user with JWT authentication
+   * 2. Create test store (WooCommerce)
+   * 3. Simulate customer placing order (webhook)
+   * 4. Process order fulfillment (CJ simulation)
+   * 5. Sync tracking number
+   * 6. Mark as delivered
+   * 7. Verify dashboard stats
+   * 8. Test retry system
+   * 9. Test AI chat integration
+   * 10. Clean up all test data
+   *
+   * NO REAL MONEY SPENT - All external API calls are simulated
+   */
+  @Post('e2e/order-journey')
+  async runE2EOrderJourney(@Body() options?: {
+    skipCleanup?: boolean;
+    skipRetryTest?: boolean;
+    skipChatTest?: boolean;
+    customerEmail?: string;
+  }) {
+    this.logger.log('Starting Complete E2E Order Journey Test...');
+
+    const report = await this.e2eOrderJourney.runCompleteE2ETest({
+      skipCleanup: options?.skipCleanup ?? false,
+      skipRetryTest: options?.skipRetryTest ?? false,
+      skipChatTest: options?.skipChatTest ?? false,
+      customerEmail: options?.customerEmail,
+    });
+
+    return {
+      success: report.success,
+      summary: {
+        totalTests: report.totalTests,
+        passed: report.passed,
+        failed: report.failed,
+        skipped: report.skipped,
+        successRate: `${((report.passed / report.totalTests) * 100).toFixed(1)}%`,
+        duration: `${(report.duration / 1000).toFixed(2)}s`,
+      },
+      messages: report.summary,
+      results: report.results,
+    };
+  }
+
+  /**
+   * Quick E2E test - skips retry and chat tests for faster execution
+   */
+  @Post('e2e/quick')
+  async runQuickE2ETest(@Body() options?: { customerEmail?: string }) {
+    return this.runE2EOrderJourney({
+      skipRetryTest: true,
+      skipChatTest: true,
+      customerEmail: options?.customerEmail,
+    });
+  }
+
+  /**
+   * E2E test without cleanup - useful for debugging
+   */
+  @Post('e2e/debug')
+  async runDebugE2ETest(@Body() options?: { customerEmail?: string }) {
+    return this.runE2EOrderJourney({
+      skipCleanup: true,
+      customerEmail: options?.customerEmail,
+    });
+  }
+
+  /**
+   * Get info about E2E test capabilities
+   */
+  @Get('e2e/info')
+  getE2ETestInfo() {
+    return {
+      name: 'Complete E2E Order Journey Test',
+      description: 'Simulates the entire order lifecycle from customer purchase to delivery',
+      phases: [
+        { phase: 1, name: 'Authentication & Setup', steps: ['Create user', 'Generate JWT', 'Create store', 'Create product mapping'] },
+        { phase: 2, name: 'Order Creation', steps: ['Generate mock order', 'Simulate webhook', 'Save to database', 'Send confirmation email'] },
+        { phase: 3, name: 'Order Fulfillment', steps: ['Trigger fulfillment', 'CJ API simulation', 'Update status', 'Send processing email'] },
+        { phase: 4, name: 'Tracking Sync', steps: ['Receive tracking', 'Update order', 'Sync to store', 'Send shipped email'] },
+        { phase: 5, name: 'Delivery Confirmation', steps: ['Update status', 'Calculate profit', 'Send delivered email'] },
+        { phase: 6, name: 'Dashboard Verification', steps: ['Verify order in list', 'Check stats', 'Validate profit'] },
+        { phase: 7, name: 'Retry System Test', steps: ['Create failed order', 'Verify retry status', 'Test manual retry'] },
+        { phase: 8, name: 'AI Chat Integration', steps: ['Test order queries', 'Test revenue queries', 'Test status queries'] },
+        { phase: 9, name: 'Cleanup', steps: ['Delete orders', 'Delete store', 'Delete user', 'Delete chat messages'] },
+      ],
+      endpoints: {
+        full: 'POST /api/test/e2e/order-journey',
+        quick: 'POST /api/test/e2e/quick',
+        debug: 'POST /api/test/e2e/debug (no cleanup)',
+        info: 'GET /api/test/e2e/info',
+      },
+      options: {
+        skipCleanup: 'boolean - Keep test data after test',
+        skipRetryTest: 'boolean - Skip retry system test',
+        skipChatTest: 'boolean - Skip AI chat integration test',
+        customerEmail: 'string - Custom email for order notifications',
+      },
+      notes: [
+        'NO REAL MONEY is spent - CJ API calls are simulated',
+        'All test data is isolated and cleaned up by default',
+        'Test can be run multiple times safely',
+        'Emails are sent to configured SMTP if available',
+      ],
     };
   }
 

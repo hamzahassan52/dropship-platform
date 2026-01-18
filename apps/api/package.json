@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "nest build",
+    "build": "rm -rf dist && rm -f *.tsbuildinfo && tsc -p tsconfig.build.json",
     "dev": "ts-node-dev --respawn --transpile-only --watch src src/main.ts",
     "start": "nest start",
     "start:prod": "node dist/main",
