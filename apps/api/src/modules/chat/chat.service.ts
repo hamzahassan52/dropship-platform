@@ -72,7 +72,7 @@ interface ToolParameter {
   items?: { type: string };
 }
 
-interface ChatResult {
+export interface ChatResult {
   reply: string;
   toolResults?: unknown[];
 }
@@ -133,26 +133,38 @@ export class ChatService implements OnModuleInit {
   // System prompt for the AI assistant
   private readonly systemPrompt = `You are a helpful AI assistant for a dropshipping automation platform. You help users manage their e-commerce stores (WooCommerce & Shopify), fulfill orders, track inventory, and analyze profits.
 
-CRITICAL FUNCTION CALLING RULES:
-- DO NOT write function calls as text or XML tags
-- DO NOT use formats like <function=name> or function_name(args)
-- The system will automatically detect when you need to call a function
-- Just describe what you want to do and the system handles function calling
-- If you need data, simply state what information you need
+⚠️ CRITICAL - NEVER DO THIS:
+- NEVER write <function=name> or </function> tags
+- NEVER write function_name(args) or function_name={args}
+- NEVER write tool names in your text responses
+- NEVER say "I will call get_business_stats" or similar
+- NEVER include JSON in angle brackets or XML format
 
-WHEN TO USE TOOLS:
-- User asks about orders → system may call get_pending_orders or get_all_stores_orders
-- User asks about stats/revenue/profit → system may call get_business_stats
-- User asks about stores → system may call manage_store with action='list'
-- User asks to search products → system may call search_products
+✅ INSTEAD DO THIS:
+- Just respond naturally to the user
+- Say "Let me check your stats" NOT "I'll call get_business_stats"
+- Say "Here are your orders" NOT "<function=get_pending_orders>"
+- The system AUTOMATICALLY handles all function calls
+- You just provide natural responses
 
-RESPONSE STYLE:
+RESPONSE GUIDELINES:
 - Be concise and helpful
-- Respond in the user's language (Roman Urdu if they use it)
-- Present data clearly when received from tools
-- Don't ask for confirmation before using tools - just use them when needed
+- Respond in Roman Urdu if the user uses it
+- Present data with emojis: 📦 for orders, 💰 for money, 🏪 for stores, 📊 for stats
+- Use bullet points for lists
+- When data is returned, summarize it naturally
 
-Available capabilities: search products, view orders, check stats, manage stores, sync tracking, import products, sync inventory, calculate profit, process refunds, send notifications, create coupons, get shipping rates, generate reports.`;
+EXAMPLE GOOD RESPONSES:
+- "Aap ki dukan mein 5 pending orders hain 📦"
+- "Is mahine ka revenue: $1,250 💰"
+- "Tracking sync ho gaya ✅"
+
+EXAMPLE BAD RESPONSES (NEVER DO THIS):
+- "<function=get_orders></function>"
+- "I'll call the manage_store function"
+- "get_business_stats({period: 'today'})"
+
+CAPABILITIES: Search products, view orders, check stats, manage stores, sync tracking, import products, sync inventory, calculate profit, process refunds, send notifications, create coupons, get shipping rates, generate reports.`;
 
   constructor(
     private readonly configService: ConfigService,
@@ -393,7 +405,7 @@ Available capabilities: search products, view orders, check stats, manage stores
         throw new Error(`Groq API error: ${response.status}`);
       }
 
-      const data: GroqResponse = await response.json();
+      const data = (await response.json()) as GroqResponse;
 
       if (!data.choices || data.choices.length === 0) {
         throw new Error('Empty response from Groq API');
@@ -518,6 +530,40 @@ Available capabilities: search products, view orders, check stats, manage stores
     }
   }
 
+  /**
+   * Clean malformed tool names from Groq
+   * Handles cases like:
+   * - "get_pending_orders={"status": "PENDING"}" → "get_pending_orders"
+   * - "manage_store({"action": "list"})" → "manage_store"
+   * - "search_products{query: 'test'}" → "search_products"
+   */
+  private cleanToolCallName(rawName: string): string {
+    if (!rawName || typeof rawName !== 'string') {
+      return '';
+    }
+
+    // Find the first occurrence of any malformed character
+    const malformedChars = ['=', '{', '(', '<', ' '];
+    let cleanName = rawName;
+
+    for (const char of malformedChars) {
+      const index = cleanName.indexOf(char);
+      if (index > 0) {
+        cleanName = cleanName.substring(0, index);
+      }
+    }
+
+    // Remove any trailing special characters
+    cleanName = cleanName.replace(/[^a-z0-9_]/gi, '');
+
+    // Log if we had to clean the name
+    if (cleanName !== rawName) {
+      this.logger.warn(`Cleaned malformed tool name: "${rawName}" → "${cleanName}"`);
+    }
+
+    return cleanName;
+  }
+
   private validateToolCalls(toolCalls?: GroqResponse['choices'][0]['message']['tool_calls']): ToolCall[] | undefined {
     if (!toolCalls || !Array.isArray(toolCalls) || toolCalls.length === 0) {
       return undefined;
@@ -532,9 +578,12 @@ Available capabilities: search products, view orders, check stats, manage stores
         continue;
       }
 
-      // Validate tool name
-      if (!this.VALID_TOOL_NAMES.has(tc.function.name)) {
-        this.logger.warn(`Unknown tool: ${tc.function.name}, skipping`);
+      // CRITICAL: Clean the tool name first (handles malformed names from Groq)
+      const cleanedName = this.cleanToolCallName(tc.function.name);
+
+      // Validate cleaned tool name
+      if (!cleanedName || !this.VALID_TOOL_NAMES.has(cleanedName)) {
+        this.logger.warn(`Unknown or invalid tool after cleaning: "${tc.function.name}" → "${cleanedName}", skipping`);
         continue;
       }
 
@@ -542,7 +591,7 @@ Available capabilities: search products, view orders, check stats, manage stores
         id: tc.id,
         type: 'function',
         function: {
-          name: tc.function.name,
+          name: cleanedName, // Use cleaned name
           arguments: tc.function.arguments || '{}',
         },
       });
@@ -801,7 +850,13 @@ Available capabilities: search products, view orders, check stats, manage stores
     args: Record<string, unknown>,
     userId: string
   ): Promise<unknown> {
+    const startTime = Date.now();
     const timeoutMs = 20000; // 20 second timeout for tool execution
+
+    // DEBUG: Log before execution
+    this.logger.log(`[TOOL EXECUTE] Starting: ${toolName}`);
+    this.logger.debug(`[TOOL EXECUTE] Args: ${JSON.stringify(args)}`);
+    this.logger.debug(`[TOOL EXECUTE] User: ${userId}`);
 
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Tool execution timeout')), timeoutMs);
@@ -811,16 +866,60 @@ Available capabilities: search products, view orders, check stats, manage stores
 
     try {
       const result = await Promise.race([executionPromise, timeoutPromise]);
+      const duration = Date.now() - startTime;
+
+      // DEBUG: Log successful result
+      this.logger.log(`[TOOL EXECUTE] Completed: ${toolName} in ${duration}ms`);
+
+      // Log result summary for debugging empty data issues
+      if (result === null || result === undefined) {
+        this.logger.warn(`[TOOL EXECUTE] ${toolName} returned null/undefined`);
+      } else if (typeof result === 'object') {
+        const resultObj = result as Record<string, unknown>;
+
+        // Check for empty arrays/objects
+        if (Array.isArray(resultObj)) {
+          this.logger.debug(`[TOOL EXECUTE] ${toolName} returned array with ${resultObj.length} items`);
+          if (resultObj.length === 0) {
+            this.logger.warn(`[TOOL EXECUTE] ${toolName} returned EMPTY ARRAY - possible data issue`);
+          }
+        } else if (resultObj.orders !== undefined) {
+          const orders = resultObj.orders as unknown[];
+          this.logger.debug(`[TOOL EXECUTE] ${toolName} returned ${orders?.length ?? 0} orders`);
+          if (!orders || orders.length === 0) {
+            this.logger.warn(`[TOOL EXECUTE] ${toolName} returned NO ORDERS - check: storeId connected? orders exist in DB?`);
+          }
+        } else if (resultObj.products !== undefined) {
+          const products = resultObj.products as unknown[];
+          this.logger.debug(`[TOOL EXECUTE] ${toolName} returned ${products?.length ?? 0} products`);
+        } else if (resultObj.stores !== undefined) {
+          const stores = resultObj.stores as unknown[];
+          this.logger.debug(`[TOOL EXECUTE] ${toolName} returned ${stores?.length ?? 0} stores`);
+        } else if (resultObj.success === false) {
+          this.logger.warn(`[TOOL EXECUTE] ${toolName} returned success=false: ${JSON.stringify(resultObj).substring(0, 200)}`);
+        } else {
+          // Log first 300 chars of result for debugging
+          this.logger.debug(`[TOOL EXECUTE] ${toolName} result preview: ${JSON.stringify(result).substring(0, 300)}`);
+        }
+      }
+
       return result ?? { success: true, message: 'Operation completed' };
     } catch (error) {
+      const duration = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Tool ${toolName} execution failed: ${errorMessage}`);
+
+      // DEBUG: Log error with full context
+      this.logger.error(`[TOOL EXECUTE] FAILED: ${toolName} after ${duration}ms`);
+      this.logger.error(`[TOOL EXECUTE] Error: ${errorMessage}`);
+      this.logger.error(`[TOOL EXECUTE] Args were: ${JSON.stringify(args)}`);
 
       // Return a structured error that can be processed
       return {
         success: false,
         error: 'Tool execution failed',
         message: this.sanitizeErrorMessage(errorMessage),
+        tool: toolName,
+        executionTime: duration,
       };
     }
   }
@@ -1423,12 +1522,106 @@ Available capabilities: search products, view orders, check stats, manage stores
 
   private createErrorResponse(customMessage?: string): ChatResult {
     const defaultMessage =
-      'I apologize, I\'m having trouble processing your request right now. Please try again in a moment. ' +
-      '/ Maafi chahta hun, abhi request process karne mein masla aa raha hai. Thodi der baad dobara try karein.';
+      '❌ Maafi chahta hun, abhi request process karne mein masla aa raha hai. Thodi der baad dobara try karein. ' +
+      '/ I apologize, having trouble processing your request. Please try again.';
 
     return {
       reply: customMessage || defaultMessage,
     };
+  }
+
+  /**
+   * Create contextual error responses based on error type
+   */
+  private createContextualErrorResponse(errorType: string, context?: Record<string, unknown>): ChatResult {
+    const errorMessages: Record<string, string> = {
+      // Rate limiting
+      'RATE_LIMITED':
+        '⏳ Aap bohat jaldi messages bhej rahe hain. 30 seconds intezaar karein.\n' +
+        '/ You\'re sending messages too quickly. Please wait 30 seconds.',
+
+      // Timeout
+      'TIMEOUT':
+        '⏰ Request mein bohat waqt lag gaya. Please dobara try karein.\n' +
+        '/ Request took too long. Please try again.',
+
+      // No stores connected
+      'NO_STORES':
+        '🏪 Aap ki koi dukan connect nahi hai. Pehle store add karein:\n' +
+        '1. Settings > Stores > Add Store\n' +
+        '2. WooCommerce ya Shopify credentials daalein\n' +
+        '/ No stores connected. Please add a store first.',
+
+      // No orders found
+      'NO_ORDERS':
+        '📦 Koi order nahi mila. Possible reasons:\n' +
+        '• Store mein orders nahi hain\n' +
+        '• Store sync nahi hua\n' +
+        '• Filter/status galat hai\n' +
+        '/ No orders found. Check if store is synced.',
+
+      // Tool execution failed
+      'TOOL_FAILED':
+        '❌ Operation fail ho gaya. Please dobara try karein.\n' +
+        '/ Operation failed. Please try again.',
+
+      // AI service error
+      'AI_SERVICE_ERROR':
+        '🤖 AI service mein temporarily masla hai. 1 minute baad try karein.\n' +
+        '/ AI service is temporarily unavailable. Try again in 1 minute.',
+
+      // Invalid request
+      'INVALID_REQUEST':
+        '❓ Samajh nahi aaya. Kripya doosre tareeqe se poochein.\n' +
+        'Example: "Meri stats dikhao" ya "Pending orders kitne hain?"\n' +
+        '/ I didn\'t understand. Please rephrase your question.',
+
+      // Database error
+      'DATABASE_ERROR':
+        '💾 Data access mein masla aa raha hai. Please thodi der baad try karein.\n' +
+        '/ Database temporarily unavailable. Please try again later.',
+
+      // Store not found
+      'STORE_NOT_FOUND':
+        '🏪 Store nahi mila. Pehle store add karein ya store ID check karein.\n' +
+        '/ Store not found. Please add a store or check the store ID.',
+
+      // Product not found
+      'PRODUCT_NOT_FOUND':
+        '🛍️ Product nahi mila. Product ID check karein.\n' +
+        '/ Product not found. Please check the product ID.',
+
+      // Order not found
+      'ORDER_NOT_FOUND':
+        '📦 Order nahi mila. Order ID check karein.\n' +
+        '/ Order not found. Please check the order ID.',
+
+      // Permission denied
+      'PERMISSION_DENIED':
+        '🔒 Is action ke liye permission nahi hai.\n' +
+        '/ You don\'t have permission for this action.',
+
+      // API error
+      'EXTERNAL_API_ERROR':
+        '🌐 External service (WooCommerce/Shopify/CJ) se connect nahi ho paya.\n' +
+        'Check karein: Store credentials sahi hain? Store online hai?\n' +
+        '/ Could not connect to external service. Check credentials.',
+    };
+
+    const message = errorMessages[errorType] || errorMessages['TOOL_FAILED'];
+
+    // Add context if provided
+    let finalMessage = message;
+    if (context) {
+      if (context.storeId) {
+        finalMessage += `\n\n📍 Store ID: ${context.storeId}`;
+      }
+      if (context.orderId) {
+        finalMessage += `\n\n📍 Order ID: ${context.orderId}`;
+      }
+    }
+
+    return { reply: finalMessage };
   }
 
   // ============================================================================
@@ -1442,41 +1635,47 @@ Available capabilities: search products, view orders, check stats, manage stores
     // Keywords for each tool category
     const toolKeywords: Record<string, string[]> = {
       // Orders related
-      'get_pending_orders': ['pending', 'order', 'orders', 'fulfill', 'unfulfilled', 'awaiting'],
-      'get_all_stores_orders': ['all orders', 'orders', 'order status', 'kitne order', 'total order', 'failed', 'shipped', 'delivered'],
-      'fulfill_orders': ['fulfill', 'ship', 'send order', 'process order'],
+      'get_pending_orders': ['pending', 'unfulfilled', 'awaiting', 'fulfill karna', 'pending order'],
+      'get_all_stores_orders': ['orders', 'order', 'kitne order', 'total order', 'failed', 'shipped', 'delivered', 'cancelled', 'all order', 'sab order'],
+      'fulfill_orders': ['fulfill', 'ship karo', 'send order', 'process order', 'bhejo'],
 
-      // Stats related
-      'get_business_stats': ['stats', 'statistics', 'revenue', 'profit', 'earning', 'income', 'money', 'sales', 'kitna', 'kmai', 'kamai', 'paisa'],
-      'analytics_report': ['report', 'analytics', 'analysis', 'trend', 'performance'],
+      // Stats related - EXPANDED for vague queries
+      'get_business_stats': [
+        'stats', 'statistics', 'revenue', 'profit', 'earning', 'income', 'money', 'sales',
+        'kitna', 'kmai', 'kamai', 'paisa', 'dollar', 'paise',
+        'overview', 'summary', 'dashboard', 'status', 'haal', 'kya haal', 'kaisay',
+        'how is', 'how are', 'tell me', 'batao', 'dikhao', 'show me',
+        'business', 'performance', 'aj', 'today', 'week', 'month', 'is mahine'
+      ],
+      'analytics_report': ['report', 'analytics', 'analysis', 'trend', 'detailed report', 'full report'],
 
       // Store related
-      'manage_store': ['store', 'stores', 'shop', 'dukan', 'my store', 'list store', 'show store'],
+      'manage_store': ['store', 'stores', 'shop', 'dukan', 'my store', 'list store', 'show store', 'meri dukan', 'connected'],
 
       // Products related
-      'search_products': ['search', 'find product', 'look for', 'dhundo', 'product search', 'cj product'],
-      'get_products': ['products', 'my products', 'store products', 'inventory', 'stock'],
-      'import_product': ['import', 'add product', 'import product'],
-      'bulk_import_products': ['bulk', 'multiple products', 'import all'],
-      'update_product_price': ['price', 'update price', 'change price', 'pricing'],
+      'search_products': ['search', 'find product', 'look for', 'dhundo', 'product search', 'cj product', 'cj se'],
+      'get_products': ['products', 'my products', 'store products', 'meri products'],
+      'import_product': ['import', 'add product', 'import product', 'laao'],
+      'bulk_import_products': ['bulk', 'multiple products', 'import all', 'saari'],
+      'update_product_price': ['price', 'update price', 'change price', 'pricing', 'qeemat'],
 
       // Tracking & Inventory
-      'sync_tracking': ['tracking', 'track', 'shipment', 'delivery status'],
-      'sync_inventory': ['inventory', 'stock', 'sync stock', 'update stock'],
+      'sync_tracking': ['tracking', 'track', 'shipment', 'delivery status', 'tracking number', 'sync tracking'],
+      'sync_inventory': ['inventory', 'stock', 'sync stock', 'update stock', 'stock level'],
 
       // Customers
-      'get_customers': ['customer', 'customers', 'buyer', 'grahak'],
+      'get_customers': ['customer', 'customers', 'buyer', 'grahak', 'client'],
 
       // Financial
-      'calculate_profit': ['profit margin', 'margin', 'calculate profit'],
-      'process_refund': ['refund', 'cancel', 'return', 'wapas'],
+      'calculate_profit': ['profit margin', 'margin', 'calculate profit', 'margin kitna'],
+      'process_refund': ['refund', 'cancel order', 'return', 'wapas', 'cancel karo'],
 
       // Communication
-      'send_notification': ['email', 'notify', 'send', 'message'],
-      'create_coupon': ['coupon', 'discount', 'code', 'promo'],
+      'send_notification': ['email', 'notify', 'send email', 'message bhejo'],
+      'create_coupon': ['coupon', 'discount', 'code', 'promo', 'discount code'],
 
       // Shipping
-      'get_shipping_rates': ['shipping', 'delivery', 'shipping rate', 'delivery cost'],
+      'get_shipping_rates': ['shipping', 'delivery cost', 'shipping rate', 'delivery charge', 'kitna shipping'],
     };
 
     // Find matching tools
@@ -1491,17 +1690,44 @@ Available capabilities: search products, view orders, check stats, manage stores
       }
     }
 
+    // Handle common vague queries that need multiple tools
+    const vagueQueries: Record<string, string[]> = {
+      // "overview" type queries - show stats + stores + orders
+      'overview': ['get_business_stats', 'manage_store', 'get_all_stores_orders'],
+      'summary': ['get_business_stats', 'manage_store', 'get_all_stores_orders'],
+      'dashboard': ['get_business_stats', 'get_all_stores_orders'],
+      'sab kuch': ['get_business_stats', 'manage_store', 'get_all_stores_orders'],
+      'everything': ['get_business_stats', 'manage_store', 'get_all_stores_orders'],
+      'all info': ['get_business_stats', 'manage_store', 'get_all_stores_orders'],
+      'kya haal': ['get_business_stats', 'get_all_stores_orders'],
+      'how is business': ['get_business_stats', 'get_all_stores_orders'],
+      'what is happening': ['get_business_stats', 'get_all_stores_orders'],
+      'status': ['get_business_stats', 'get_all_stores_orders', 'manage_store'],
+    };
+
+    // Check vague queries
+    for (const [query, tools] of Object.entries(vagueQueries)) {
+      if (lowerMessage.includes(query)) {
+        tools.forEach(t => matchedTools.add(t));
+      }
+    }
+
     // If no specific tools matched, check for general queries
     if (matchedTools.size === 0) {
-      // Check if it's a greeting or general question - no tools needed
-      const greetings = ['hello', 'hi', 'hey', 'salam', 'assalam', 'kya hal', 'how are', 'thanks', 'thank', 'shukriya', 'ok', 'okay', 'theek'];
-      const isGreeting = greetings.some(g => lowerMessage.includes(g));
+      // Check if it's a greeting - no tools needed
+      const greetings = ['hello', 'hi', 'hey', 'salam', 'assalam', 'thanks', 'thank', 'shukriya', 'ok', 'okay', 'theek', 'acha', 'good', 'nice'];
+      const isGreeting = greetings.some(g => lowerMessage.split(/\s+/).includes(g) || lowerMessage === g);
 
-      if (isGreeting) {
-        return []; // No tools for greetings
+      // Check if it's a question about capabilities
+      const helpQueries = ['what can you', 'kya kar sakte', 'help', 'madad', 'capabilities', 'features'];
+      const isHelpQuery = helpQueries.some(q => lowerMessage.includes(q));
+
+      if (isGreeting || isHelpQuery) {
+        return []; // No tools for greetings or help queries
       }
 
-      // For ambiguous queries, provide basic tools
+      // For truly ambiguous queries, provide overview tools
+      this.logger.debug(`No specific match found for: "${message.substring(0, 50)}", providing overview tools`);
       matchedTools.add('get_business_stats');
       matchedTools.add('manage_store');
       matchedTools.add('get_all_stores_orders');
@@ -1517,15 +1743,34 @@ Available capabilities: search products, view orders, check stats, manage stores
       matchedTools.add('get_business_stats');
     }
 
-    // Filter and return only matched tools (max 5 to reduce confusion)
+    // Filter and return only matched tools
     const selectedTools = allTools.filter(tool =>
       matchedTools.has(tool.function.name)
     );
 
+    // Prioritize tools based on likely relevance
+    const priorityOrder = [
+      'get_business_stats',
+      'get_all_stores_orders',
+      'get_pending_orders',
+      'manage_store',
+      'analytics_report',
+      'get_products',
+      'search_products',
+    ];
+
+    selectedTools.sort((a, b) => {
+      const aIndex = priorityOrder.indexOf(a.function.name);
+      const bIndex = priorityOrder.indexOf(b.function.name);
+      const aPriority = aIndex === -1 ? 100 : aIndex;
+      const bPriority = bIndex === -1 ? 100 : bIndex;
+      return aPriority - bPriority;
+    });
+
     // Limit to 5 most relevant tools
     const limitedTools = selectedTools.slice(0, 5);
 
-    this.logger.debug(`Selected ${limitedTools.length} tools for message: "${message.substring(0, 50)}..."`);
+    this.logger.log(`[TOOLS] Selected ${limitedTools.length} tools: ${limitedTools.map(t => t.function.name).join(', ')}`);
 
     return limitedTools;
   }
@@ -1541,18 +1786,288 @@ Available capabilities: search products, view orders, check stats, manage stores
 
   private formatToolResultsAsResponse(toolResults: unknown[]): string {
     if (!toolResults || toolResults.length === 0) {
-      return 'Operation completed. / Kaam ho gaya.';
+      return '✅ Kaam ho gaya / Operation completed.';
     }
 
-    const results = toolResults.map((tr: unknown) => {
-      const result = tr as { tool: string; result?: unknown; error?: string };
-      if (result.error) {
-        return `${result.tool}: Error occurred`;
+    const formattedParts: string[] = [];
+
+    for (const tr of toolResults) {
+      const toolResult = tr as { tool: string; result?: Record<string, unknown>; error?: string };
+
+      if (toolResult.error) {
+        formattedParts.push(`❌ ${this.getToolDisplayName(toolResult.tool)}: Error`);
+        continue;
       }
-      return `${result.tool}: Completed successfully`;
+
+      const result = toolResult.result;
+      if (!result) {
+        formattedParts.push(`✅ ${this.getToolDisplayName(toolResult.tool)}: Done`);
+        continue;
+      }
+
+      // Format based on tool type
+      switch (toolResult.tool) {
+        case 'get_business_stats':
+          formattedParts.push(this.formatBusinessStats(result));
+          break;
+
+        case 'get_pending_orders':
+        case 'get_all_stores_orders':
+          formattedParts.push(this.formatOrdersResult(result));
+          break;
+
+        case 'manage_store':
+          formattedParts.push(this.formatStoresResult(result));
+          break;
+
+        case 'get_products':
+          formattedParts.push(this.formatProductsResult(result));
+          break;
+
+        case 'get_customers':
+          formattedParts.push(this.formatCustomersResult(result));
+          break;
+
+        case 'analytics_report':
+          formattedParts.push(this.formatAnalyticsResult(result));
+          break;
+
+        case 'search_products':
+          formattedParts.push(this.formatSearchResult(result));
+          break;
+
+        default:
+          // Generic success format
+          if (result.success === true) {
+            formattedParts.push(`✅ ${this.getToolDisplayName(toolResult.tool)}: ${result.message || 'Completed'}`);
+          } else if (result.success === false) {
+            formattedParts.push(`❌ ${this.getToolDisplayName(toolResult.tool)}: ${result.message || 'Failed'}`);
+          } else {
+            formattedParts.push(`✅ ${this.getToolDisplayName(toolResult.tool)}: Done`);
+          }
+      }
+    }
+
+    return formattedParts.join('\n\n');
+  }
+
+  private getToolDisplayName(toolName: string): string {
+    const displayNames: Record<string, string> = {
+      'get_business_stats': '📊 Business Stats',
+      'get_pending_orders': '📦 Pending Orders',
+      'get_all_stores_orders': '📦 All Orders',
+      'manage_store': '🏪 Stores',
+      'get_products': '🛍️ Products',
+      'get_customers': '👥 Customers',
+      'search_products': '🔍 Search Results',
+      'analytics_report': '📈 Analytics',
+      'fulfill_orders': '🚀 Fulfillment',
+      'sync_tracking': '📍 Tracking Sync',
+      'sync_inventory': '📊 Inventory Sync',
+      'import_product': '📥 Import',
+      'send_notification': '📧 Email',
+      'create_coupon': '🎟️ Coupon',
+    };
+    return displayNames[toolName] || `🔧 ${toolName}`;
+  }
+
+  private formatBusinessStats(result: Record<string, unknown>): string {
+    const stats = result as {
+      revenue?: number;
+      profit?: number;
+      orders?: number;
+      pendingOrders?: number;
+      shippedOrders?: number;
+      totalRevenue?: number;
+      totalProfit?: number;
+      totalOrders?: number;
+    };
+
+    const lines: string[] = ['📊 **Business Stats**'];
+
+    const revenue = stats.revenue ?? stats.totalRevenue ?? 0;
+    const profit = stats.profit ?? stats.totalProfit ?? 0;
+    const orders = stats.orders ?? stats.totalOrders ?? 0;
+
+    lines.push(`💰 Revenue: $${Number(revenue).toFixed(2)}`);
+    lines.push(`💵 Profit: $${Number(profit).toFixed(2)}`);
+    lines.push(`📦 Total Orders: ${orders}`);
+
+    if (stats.pendingOrders !== undefined) {
+      lines.push(`⏳ Pending: ${stats.pendingOrders}`);
+    }
+    if (stats.shippedOrders !== undefined) {
+      lines.push(`🚚 Shipped: ${stats.shippedOrders}`);
+    }
+
+    return lines.join('\n');
+  }
+
+  private formatOrdersResult(result: Record<string, unknown>): string {
+    const data = result as {
+      orders?: Array<{ id: string; status?: string; total?: number; customerName?: string }>;
+      totalOrders?: number;
+      pendingCount?: number;
+      shippedCount?: number;
+    };
+
+    const orders = data.orders || [];
+    const lines: string[] = [];
+
+    if (orders.length === 0) {
+      return '📦 No orders found / Koi order nahi mila';
+    }
+
+    lines.push(`📦 **Orders** (${orders.length} found)`);
+
+    // Show summary by status
+    const statusCounts: Record<string, number> = {};
+    for (const order of orders) {
+      const status = order.status || 'UNKNOWN';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    }
+
+    for (const [status, count] of Object.entries(statusCounts)) {
+      const emoji = this.getStatusEmoji(status);
+      lines.push(`${emoji} ${status}: ${count}`);
+    }
+
+    // Show first few orders
+    if (orders.length > 0) {
+      lines.push('\n**Recent:**');
+      orders.slice(0, 3).forEach((order, i) => {
+        lines.push(`${i + 1}. #${order.id} - ${order.customerName || 'Customer'} - $${order.total || 0}`);
+      });
+    }
+
+    return lines.join('\n');
+  }
+
+  private formatStoresResult(result: Record<string, unknown>): string {
+    const data = result as {
+      stores?: Array<{ id: string; name: string; platform?: string; isActive?: boolean }>;
+      success?: boolean;
+      message?: string;
+    };
+
+    if (data.message) {
+      return `🏪 ${data.message}`;
+    }
+
+    const stores = data.stores || [];
+    if (stores.length === 0) {
+      return '🏪 No stores connected / Koi dukan connect nahi hai';
+    }
+
+    const lines: string[] = [`🏪 **Your Stores** (${stores.length})`];
+
+    stores.forEach((store, i) => {
+      const status = store.isActive ? '🟢' : '🔴';
+      lines.push(`${i + 1}. ${status} ${store.name} (${store.platform || 'Unknown'})`);
     });
 
-    return `Completed tasks:\n${results.join('\n')}\n\n/ Mukammal tasks:\n${results.join('\n')}`;
+    return lines.join('\n');
+  }
+
+  private formatProductsResult(result: Record<string, unknown>): string {
+    const data = result as {
+      products?: Array<{ id: string; name: string; price?: number; stock?: number }>;
+      total?: number;
+    };
+
+    const products = data.products || [];
+    if (products.length === 0) {
+      return '🛍️ No products found / Koi product nahi mila';
+    }
+
+    const lines: string[] = [`🛍️ **Products** (${products.length})`];
+
+    products.slice(0, 5).forEach((product, i) => {
+      lines.push(`${i + 1}. ${product.name} - $${product.price || 0} (Stock: ${product.stock || 0})`);
+    });
+
+    if (products.length > 5) {
+      lines.push(`... and ${products.length - 5} more`);
+    }
+
+    return lines.join('\n');
+  }
+
+  private formatCustomersResult(result: Record<string, unknown>): string {
+    const data = result as {
+      customers?: Array<{ id: string; name?: string; email?: string; totalSpent?: number }>;
+      total?: number;
+    };
+
+    const customers = data.customers || [];
+    if (customers.length === 0) {
+      return '👥 No customers found / Koi customer nahi mila';
+    }
+
+    const lines: string[] = [`👥 **Customers** (${customers.length})`];
+
+    customers.slice(0, 5).forEach((customer, i) => {
+      lines.push(`${i + 1}. ${customer.name || customer.email || 'Unknown'} - $${customer.totalSpent || 0} spent`);
+    });
+
+    return lines.join('\n');
+  }
+
+  private formatAnalyticsResult(result: Record<string, unknown>): string {
+    const lines: string[] = ['📈 **Analytics Report**'];
+
+    // Try to extract common analytics fields
+    for (const [key, value] of Object.entries(result)) {
+      if (typeof value === 'number') {
+        const displayKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+        if (key.includes('revenue') || key.includes('profit') || key.includes('spent')) {
+          lines.push(`💰 ${displayKey}: $${value.toFixed(2)}`);
+        } else if (key.includes('order') || key.includes('count')) {
+          lines.push(`📦 ${displayKey}: ${value}`);
+        } else {
+          lines.push(`📊 ${displayKey}: ${value}`);
+        }
+      }
+    }
+
+    return lines.length > 1 ? lines.join('\n') : '📈 Analytics report generated';
+  }
+
+  private formatSearchResult(result: Record<string, unknown>): string {
+    const data = result as {
+      products?: Array<{ name: string; price?: number; id?: string }>;
+      total?: number;
+    };
+
+    const products = data.products || [];
+    if (products.length === 0) {
+      return '🔍 No products found matching your search / Kuch nahi mila';
+    }
+
+    const lines: string[] = [`🔍 **Search Results** (${products.length} found)`];
+
+    products.slice(0, 5).forEach((product, i) => {
+      lines.push(`${i + 1}. ${product.name} - $${product.price || 'N/A'}`);
+    });
+
+    return lines.join('\n');
+  }
+
+  private getStatusEmoji(status: string): string {
+    const emojis: Record<string, string> = {
+      'PENDING': '⏳',
+      'PROCESSING': '⚙️',
+      'SHIPPED': '🚚',
+      'DELIVERED': '✅',
+      'CANCELLED': '❌',
+      'REFUNDED': '💸',
+      'FAILED': '❌',
+      'RETRY_1': '🔄',
+      'RETRY_2': '🔄',
+      'RETRY_3': '🔄',
+      'FULFILLED': '✅',
+    };
+    return emojis[status.toUpperCase()] || '📦';
   }
 
   private delay(ms: number): Promise<void> {

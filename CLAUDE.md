@@ -477,6 +477,84 @@ dropship-platform/
 | DELETE | `/api/chat/history`     | Clear chat history       |
 | POST   | `/api/chat/test`        | Test chat (no auth)      |
 
+---
+
+### AI Chat Service Architecture (Production-Ready)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         AI CHAT SERVICE FLOW                                 │
+│                                                                              │
+│  User Message                                                               │
+│       │                                                                      │
+│       ▼                                                                      │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐                   │
+│  │   Rate      │────►│  Sanitize   │────►│   Smart     │                   │
+│  │   Limit     │     │   Input     │     │   Tool      │                   │
+│  │  (30/min)   │     │             │     │  Selection  │                   │
+│  └─────────────┘     └─────────────┘     └─────────────┘                   │
+│                                                 │                            │
+│                                                 ▼                            │
+│                                          ┌─────────────┐                    │
+│                                          │  Groq API   │                    │
+│                                          │ llama-3.3   │                    │
+│                                          │  70b-vers   │                    │
+│                                          └─────────────┘                    │
+│                                                 │                            │
+│                            ┌────────────────────┴────────────────────┐      │
+│                            │                                         │      │
+│                            ▼                                         ▼      │
+│                   ┌─────────────────┐                      ┌─────────────┐ │
+│                   │   Tool Calls?   │                      │   Direct    │ │
+│                   │   - Clean Name  │                      │   Response  │ │
+│                   │   - Validate    │                      │             │ │
+│                   │   - Coerce Args │                      └─────────────┘ │
+│                   └─────────────────┘                                       │
+│                            │                                                 │
+│                            ▼                                                 │
+│                   ┌─────────────────┐                                       │
+│                   │  MCP Service    │                                       │
+│                   │  Execute Tools  │                                       │
+│                   │  (19 tools)     │                                       │
+│                   └─────────────────┘                                       │
+│                            │                                                 │
+│                            ▼                                                 │
+│                   ┌─────────────────┐                                       │
+│                   │ Format Response │                                       │
+│                   │ 📊💰📦🏪🛍️   │                                       │
+│                   └─────────────────┘                                       │
+│                            │                                                 │
+│                            ▼                                                 │
+│                      User Response                                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Features:**
+
+| Feature                  | Implementation                                      |
+| ------------------------ | --------------------------------------------------- |
+| **Rate Limiting**        | 30 requests/minute per user                         |
+| **Retry Logic**          | 3 retries with exponential backoff                  |
+| **Timeout**              | 25s API timeout, 20s tool execution timeout         |
+| **Tool Name Cleaning**   | Strips malformed names (`name={args}` → `name`)     |
+| **Type Coercion**        | Converts `"10"` (string) → `10` (number)            |
+| **Smart Tool Selection** | Selects 1-5 relevant tools based on message         |
+| **Bilingual Responses**  | Roman Urdu + English with emojis                    |
+| **Contextual Errors**    | Specific error messages for each failure type       |
+| **Debug Logging**        | Comprehensive logs for empty data debugging         |
+
+**Smart Tool Selection Keywords:**
+
+| Query Type              | Tools Selected                                      |
+| ----------------------- | --------------------------------------------------- |
+| "overview", "summary"   | `get_business_stats`, `manage_store`, `get_all_stores_orders` |
+| "orders", "pending"     | `get_pending_orders`, `get_all_stores_orders`       |
+| "stats", "revenue"      | `get_business_stats`                                |
+| "store", "dukan"        | `manage_store`                                      |
+| "products", "search"    | `search_products`, `get_products`                   |
+
+---
+
 #### Dashboard Module
 | Method | Endpoint                      | Description              |
 | ------ | ----------------------------- | ------------------------ |
@@ -949,6 +1027,20 @@ curl -X POST http://localhost:4000/api/mcp/run \
 ---
 
 ## Changelog
+
+### January 18, 2026 - Production-Ready AI Chat Service
+- **Malformed Tool Name Handling**: Added `cleanToolCallName()` to fix Groq sending names like `get_orders={"status":"PENDING"}` → `get_orders`
+- **Comprehensive Debug Logging**: Added detailed logging in `executeToolSafe()` for debugging empty data issues
+- **Stronger System Prompt**: Updated prompt with explicit "NEVER DO THIS" examples to stop AI writing `<function=name>` syntax
+- **Emoji-Rich Responses**: Implemented `formatToolResultsAsResponse()` with proper formatting:
+  - 📊 Business Stats with 💰 Revenue, 💵 Profit
+  - 📦 Orders with status emojis (⏳ Pending, 🚚 Shipped, ✅ Delivered)
+  - 🏪 Stores, 🛍️ Products, 👥 Customers
+- **Contextual Error Messages**: Added `createContextualErrorResponse()` with bilingual messages (Roman Urdu + English)
+- **Smart Tool Selection**: Improved `getRelevantTools()` for vague queries like "overview", "kya haal", "summary"
+- **Type Coercion**: Fixed LLM sending `limit: "10"` (string) instead of `limit: 10` (number)
+- **Rate Limiting**: 30 requests/minute per user
+- **Retry Logic**: 3 automatic retries with exponential backoff
 
 ### January 17, 2026 - Store Management System
 - Added automatic webhook setup on store creation
