@@ -105,13 +105,6 @@ export function ChatWidget() {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
   return (
     <>
       {/* Chat Button */}
@@ -237,7 +230,11 @@ export function ChatWidget() {
                         : '#f3f4f6',
                     color: msg.role === 'user' ? 'white' : '#1f2937',
                     fontSize: '0.875rem',
-                    whiteSpace: 'pre-wrap'
+                    lineHeight: '1.5',
+                    whiteSpace: 'pre-wrap',
+                    wordWrap: 'break-word',
+                    overflowWrap: 'break-word',
+                    wordBreak: 'break-word'
                   }}
                 >
                   {msg.content}
@@ -276,24 +273,41 @@ export function ChatWidget() {
               padding: '1rem',
               borderTop: '1px solid #e5e7eb',
               display: 'flex',
-              gap: '0.5rem'
+              gap: '0.5rem',
+              alignItems: 'flex-end'
             }}
           >
-            <input
-              type="text"
+            <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type a message..."
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage();
+                }
+              }}
+              placeholder="Type a message... (Shift+Enter for new line)"
+              rows={1}
               style={{
                 flex: 1,
                 padding: '0.75rem',
                 border: '1px solid #d1d5db',
                 borderRadius: '0.5rem',
                 fontSize: '0.875rem',
-                outline: 'none'
+                outline: 'none',
+                resize: 'none',
+                minHeight: '44px',
+                maxHeight: '120px',
+                overflowY: 'auto',
+                lineHeight: '1.4',
+                fontFamily: 'inherit'
               }}
               disabled={loading}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = 'auto';
+                target.style.height = Math.min(target.scrollHeight, 120) + 'px';
+              }}
             />
             <button
               onClick={sendMessage}
@@ -305,7 +319,9 @@ export function ChatWidget() {
                   : '#e5e7eb',
                 color: 'white',
                 borderRadius: '0.5rem',
-                cursor: input.trim() ? 'pointer' : 'not-allowed'
+                cursor: input.trim() ? 'pointer' : 'not-allowed',
+                height: '44px',
+                flexShrink: 0
               }}
             >
               <Send size={18} />
