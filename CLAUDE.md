@@ -18,30 +18,28 @@
 | **Email**           | Nodemailer (Professional HTML Templates)                  |
 | **Monorepo**        | Turborepo + pnpm                                          |
 
----
-
 ## System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              USER'S BROWSER                                  │
-│                                                                              │
+│                              USER'S BROWSER                                 │
+│                                                                             │
 │  ┌─────────────────────────────────────────────────────────────────────┐    │
-│  │                     AUTHENTICATION FLOW                              │    │
-│  │  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────────────┐│    │
-│  │  │  Google   │  │   Apple   │  │  Facebook │  │  Email/Password   ││    │
-│  │  │   OAuth   │  │   OAuth   │  │   OAuth   │  │   (Credentials)   ││    │
-│  │  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘  └─────────┬─────────┘│    │
+│  │                     AUTHENTICATION FLOW                              │   │
+│  │  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────────────┐│     │
+│  │  │  Google   │  │   Apple   │  │  Facebook │  │  Email/Password   ││     │
+│  │  │   OAuth   │  │   OAuth   │  │   OAuth   │  │   (Credentials)   ││     │
+│  │  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘  └─────────┬─────────┘│     │
 │  │        └──────────────┴──────────────┴───────────────────┘          │    │
-│  │                              ↓                                       │    │
-│  │                     NextAuth.js Session                              │    │
+│  │                              ↓                                       │   │
+│  │                     NextAuth.js Session                              │   │
 │  └─────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
+│                                                                             │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
 │  │ Login/Signup│  │  Dashboard  │  │ Stores Page │  │    AI Chat Widget   │ │
 │  │   /login    │  │     /       │  │  /stores    │  │  (Floating Bubble)  │ │
 │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────────────┘ │
-│                                                                              │
+│                                                                             │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                          │
 │  │Store Detail │  │   Orders    │  │Failed Orders│                          │
 │  │/stores/[id] │  │  /orders    │  │/orders/failed│                         │
@@ -51,12 +49,12 @@
                                       │ HTTP/REST + JWT Token
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           BACKEND (NestJS :4000)                             │
-│                                                                              │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐      │
-│  │   Auth   │  │   Chat   │  │  Stores  │  │  Orders  │  │ Webhooks │      │
-│  │  Module  │  │  Module  │  │  Module  │  │  Module  │  │  Module  │      │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘      │
+│                           BACKEND (NestJS :4000)                            │
+│                                                                             │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐       │
+│  │   Auth   │  │   Chat   │  │  Stores  │  │  Orders  │  │ Webhooks │       │
+│  │  Module  │  │  Module  │  │  Module  │  │  Module  │  │  Module  │       │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘       │
 │       │             │             │             │             │             │
 │       │             ▼             │             │             │             │
 │       │    ┌────────────────┐     │             │             │             │
@@ -70,49 +68,47 @@
 │       │    └───────┬────────┘                                               │
 │       │            │                                                        │
 │       ▼            ▼                                                        │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                         INTEGRATIONS                                 │   │
-│  │  ┌────────────┐  ┌────────────┐  ┌────────────────────┐             │   │
-│  │  │WooCommerce │  │  Shopify   │  │  CJ Dropshipping   │             │   │
-│  │  │    API     │  │    API     │  │     (Supplier)     │             │   │
-│  │  │ + Webhooks │  │ + Webhooks │  │  + Simulation Mode │             │   │
-│  │  └────────────┘  └────────────┘  └────────────────────┘             │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                         INTEGRATIONS                                │    │
+│  │  ┌────────────┐  ┌────────────┐  ┌────────────────────┐             │    │
+│  │  │WooCommerce │  │  Shopify   │  │  CJ Dropshipping   │             │    │
+│  │  │    API     │  │    API     │  │     (Supplier)     │             │    │
+│  │  │ + Webhooks │  │ + Webhooks │  │  + Simulation Mode │             │    │
+│  │  └────────────┘  └────────────┘  └────────────────────┘             │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          EXTERNAL SERVICES                                   │
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐            │
-│  │ PostgreSQL │  │   Groq     │  │   SMTP     │  │ Store APIs │            │
-│  │  Database  │  │ Llama 3.3  │  │   Email    │  │ WC/Shopify │            │
-│  └────────────┘  └────────────┘  └────────────┘  └────────────┘            │
+│                          EXTERNAL SERVICES                                  │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐             │
+│  │ PostgreSQL │  │   Groq     │  │   SMTP     │  │ Store APIs │             │
+│  │  Database  │  │ Llama 3.3  │  │   Email    │  │ WC/Shopify │             │
+│  └────────────┘  └────────────┘  └────────────┘  └────────────┘             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
-
----
 
 ## Order Retry System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         ORDER RETRY SYSTEM                                   │
-│                                                                              │
+│                         ORDER RETRY SYSTEM                                  │
+│                                                                             │
 │  Order Fulfillment Failed                                                   │
-│         │                                                                    │
-│         ▼                                                                    │
-│  ┌─────────────┐    15 min     ┌─────────────┐    1 hour    ┌─────────────┐│
-│  │   RETRY_1   │ ────────────► │   RETRY_2   │ ───────────► │   RETRY_3   ││
-│  │  (1st try)  │               │  (2nd try)  │              │  (3rd try)  ││
-│  └─────────────┘               └─────────────┘              └─────────────┘│
-│                                                                      │       │
-│                                                              4 hours │       │
-│                                                                      ▼       │
+│         │                                                                   │
+│         ▼                                                                   │
+│  ┌─────────────┐    15 min     ┌─────────────┐    1 hour    ┌─────────────┐ │
+│  │   RETRY_1   │ ────────────► │   RETRY_2   │ ───────────► │   RETRY_3   │ │
+│  │  (1st try)  │               │  (2nd try)  │              │  (3rd try)  │ │
+│  └─────────────┘               └─────────────┘              └─────────────┘ │
+│                                                                      │      │
+│                                                              4 hours │      │
+│                                                                      ▼      │
 │                                                            ┌─────────────┐  │
 │                                                            │   FAILED    │  │
 │                                                            │(Manual Only)│  │
 │                                                            └─────────────┘  │
-│                                                                              │
+│                                                                             │
 │  Cron Job: Every 5 minutes checks for orders ready to retry                 │
 │  Manual Retry: Available via UI or API at any state                         │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -124,25 +120,25 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                      AUTOMATIC WEBHOOK SETUP                                 │
-│                                                                              │
+│                      AUTOMATIC WEBHOOK SETUP                                │
+│                                                                             │
 │  User Adds Store                                                            │
-│         │                                                                    │
-│         ▼                                                                    │
+│         │                                                                   │
+│         ▼                                                                   │
 │  ┌─────────────────────────────────────────────────────────────────────┐    │
 │  │  WebhookSetupService.setupStoreWebhooks(storeId)                    │    │
 │  └─────────────────────────────────────────────────────────────────────┘    │
-│         │                                                                    │
+│         │                                                                   │
 │         ├──── WooCommerce ────►  Creates webhooks via REST API              │
 │         │     - order.created    POST /wp-json/wc/v3/webhooks               │
 │         │     - order.updated                                               │
-│         │                                                                    │
+│         │                                                                   │
 │         └──── Shopify ────────►  Creates webhooks via GraphQL               │
 │               - orders/create    POST /admin/api/webhooks.json              │
 │               - orders/updated                                              │
 │               - orders/cancelled                                            │
-│                                                                              │
-│  Webhook URL: https://api.yoursite.com/api/webhooks/{platform}/{storeId}   │
+│                                                                             │
+│  Webhook URL: https://api.yoursite.com/api/webhooks/{platform}/{storeId}    │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -152,14 +148,14 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    IMMEDIATE ORDER FULFILLMENT FLOW                          │
-│                                                                              │
-│  ⚡ Orders are processed IMMEDIATELY via webhook - NO cron job wait!        │
+│                    IMMEDIATE ORDER FULFILLMENT FLOW                         │
+│                                                                             │
+│  ⚡ Orders are processed IMMEDIATELY via webhook - NO cron job wait!         │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 PHASE 1: Customer Places Order
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  Customer → WooCommerce/Shopify Store → Order #1001 ($24.99)                │
+│  Customer → WooCommerce/Shopify Store → Order #1001 ($24.99)              │
 │  Order Status: 'processing' (payment received)                              │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
@@ -168,21 +164,21 @@ PHASE 2: Webhook Triggers Backend (IMMEDIATE)
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  WooCommerce/Shopify sends webhook to:                                      │
 │  POST /api/webhooks/woocommerce/:storeId                                    │
-│                                                                              │
+│                                                                             │
 │  Backend Actions (SYNCHRONOUS - NO DELAY):                                  │
 │  ├─ WebhooksService.handleOrderCreated()                                    │
 │  ├─ Validates order status === 'processing'                                 │
-│  ├─ Creates Order in database (status: PENDING)                             │
+│  ├─ Creates Order in database (status: processing)                          │
 │  └─ Sends "Order Received" email to customer                                │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
                                       ▼
 PHASE 3: IMMEDIATE CJ Fulfillment (NO CRON WAIT!)
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  ⚡ OrdersService.fulfillOrderFromWebhook() - Called IMMEDIATELY            │
-│                                                                              │
+│  ⚡ OrdersService.fulfillOrderFromWebhook() - Called IMMEDIATELY             │
+│                                                                             │
 │  ├─ Prepares CJ order data from webhook payload                             │
-│  ├─ Calls cjDropshipping.placeOrder() → TURANT CJ ko order bhejta hai      │
+│  ├─ Calls cjDropshipping.placeOrder() → Foran CJ ko order bhejta hai        │
 │  │                                                                          │
 │  ├─ SUCCESS PATH:                                                           │
 │  │   ├─ Order status: PROCESSING                                            │
@@ -226,13 +222,13 @@ PHASE 6: Delivery Complete
 
 ### Key Code References
 
-| Phase    | File                         | Function                    | Line    |
-| -------- | ---------------------------- | --------------------------- | ------- |
-| 2        | `webhooks.service.ts`        | `handleOrderCreated()`      | 81-134  |
-| 3        | `orders.service.ts`          | `fulfillOrderFromWebhook()` | 195-302 |
-| 3        | `cj-dropshipping.service.ts` | `placeOrder()`              | 116-173 |
-| 3 (fail) | `orders.service.ts`          | `saveFailedOrderForRetry()` | 680-733 |
-| 5        | `scheduler.service.ts`       | `syncTrackingNumbers()`     | 52-81   |
+| Phase    | File                         | Function                    |
+| -------- | ---------------------------- | --------------------------- |
+| 2        | `webhooks.service.ts`        | `handleOrderCreated()`      |
+| 3        | `orders.service.ts`          | `fulfillOrderFromWebhook()` |
+| 3        | `cj-dropshipping.service.ts` | `placeOrder()`              |
+| 3 (fail) | `orders.service.ts`          | `saveFailedOrderForRetry()` |
+| 5        | `scheduler.service.ts`       | `syncTrackingNumbers()`     |
 
 ### Important Notes
 
@@ -811,41 +807,6 @@ model ChatMessage {
 }
 ```
 
----
-
-## Commands
-
-```bash
-# Install all dependencies
-pnpm install
-
-# Start development (frontend + backend)
-pnpm dev
-
-# Start only frontend (port 3000)
-pnpm dev:web
-
-# Start only backend (port 4000)
-pnpm dev:api
-
-# Build backend for production
-cd apps/api && npm run build
-
-# Run backend (production)
-cd apps/api && node dist/main.js
-
-# Database commands
-cd apps/api
-npx prisma generate      # Generate Prisma client
-npx prisma migrate dev   # Run migrations
-npx prisma studio        # Open database GUI (port 5555)
-
-# Build for production
-pnpm build
-```
-
----
-
 ## Environment Variables
 
 ### Backend (`apps/api/.env`)
@@ -1090,58 +1051,6 @@ curl -X POST http://localhost:4000/api/mcp/run \
 - WooCommerce & Shopify integrations
 - Order automation with CJ Dropshipping
 - Cron jobs for auto-processing
-
-About PM2
-
-PM2 is NOT currently used in your project - I just mentioned it as a suggestion for production deployment.
-
-What is PM2?
-
-PM2 is a production process manager for Node.js applications. It helps:
-┌─────────────────┬────────────────────────────────────────────┐
-│ Feature │ Description │
-├─────────────────┼────────────────────────────────────────────┤
-│ Auto-restart │ Restarts your app if it crashes │
-├─────────────────┼────────────────────────────────────────────┤
-│ Cluster mode │ Runs multiple instances for load balancing │
-├─────────────────┼────────────────────────────────────────────┤
-│ Log management │ Collects and rotates logs │
-├─────────────────┼────────────────────────────────────────────┤
-│ Monitoring │ CPU/Memory usage dashboard │
-├─────────────────┼────────────────────────────────────────────┤
-│ Startup scripts │ Auto-start on server reboot │
-└─────────────────┴────────────────────────────────────────────┘
-Without PM2 (Current)
-
-node dist/main.js
-
-# If it crashes, you need to restart manually
-
-# If server reboots, app doesn't auto-start
-
-With PM2 (Optional for Production)
-
-# Install PM2 globally
-
-npm install -g pm2
-
-# Start your app
-
-pm2 start dist/main.js --name dropship-api
-
-# Useful commands
-
-pm2 list # See all running apps
-pm2 logs # View logs
-pm2 restart all # Restart apps
-pm2 save # Save current process list
-pm2 startup # Generate startup script
-
-Do You Need PM2?
-
-- Development: No, use npm run dev
-- Production (VPS/Server): Yes, highly recommended
-- Production (Docker/Cloud): Usually handled by the platform (AWS ECS, Railway, etc.)
 
 ⏺ PM2 configuration added. Here's a summary:
 
